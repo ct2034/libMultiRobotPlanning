@@ -14,22 +14,18 @@ using libMultiRobotPlanning::Neighbor;
 using libMultiRobotPlanning::PlanResult;
 
 struct State {
-  State(int time, int x, int y) : time(time), x(x), y(y) {}
+  State(int time, int v) : time(time), v(v) {}
 
-  bool operator==(const State& s) const {
-    return time == s.time && x == s.x && y == s.y;
-  }
+  bool operator==(const State& s) const { return time == s.time && v == s.v; }
 
-  bool equalExceptTime(const State& s) const { return x == s.x && y == s.y; }
+  bool equalExceptTime(const State& s) const { return v == s.v; }
 
   friend std::ostream& operator<<(std::ostream& os, const State& s) {
-    return os << s.time << ": (" << s.x << "," << s.y << ")";
-    // return os << "(" << s.x << "," << s.y << ")";
+    return os << s.time << ": (" << s.v << ")";
   }
 
   int time;
-  int x;
-  int y;
+  int v;
 };
 
 namespace std {
@@ -38,39 +34,27 @@ struct hash<State> {
   size_t operator()(const State& s) const {
     size_t seed = 0;
     boost::hash_combine(seed, s.time);
-    boost::hash_combine(seed, s.x);
-    boost::hash_combine(seed, s.y);
+    boost::hash_combine(seed, s.v);
     return seed;
   }
 };
 }  // namespace std
 
 ///
-enum class Action {
-  Up,
-  Down,
-  Left,
-  Right,
-  Wait,
+struct Action {
+  Action(int where) : where(where) {}
+
+  bool move() const { return where != 0; }
+  int toEdge() const { return where - 1; }
+
+  int where;
 };
 
 std::ostream& operator<<(std::ostream& os, const Action& a) {
-  switch (a) {
-    case Action::Up:
-      os << "Up";
-      break;
-    case Action::Down:
-      os << "Down";
-      break;
-    case Action::Left:
-      os << "Left";
-      break;
-    case Action::Right:
-      os << "Right";
-      break;
-    case Action::Wait:
-      os << "Wait";
-      break;
+  if (a.move())
+    os << "to " << a.toEdge() << " ";
+  else {
+    os << "wait";
   }
   return os;
 }
@@ -88,39 +72,35 @@ struct Conflict {
   size_t agent2;
   Type type;
 
-  int x1;
-  int y1;
-  int x2;
-  int y2;
+  int v1;
+  int v2;
 
   friend std::ostream& operator<<(std::ostream& os, const Conflict& c) {
     switch (c.type) {
       case Vertex:
-        return os << c.time << ": Vertex(" << c.x1 << "," << c.y1 << ")";
+        return os << c.time << ": Vertex(" << c.v1 << ")";
       case Edge:
-        return os << c.time << ": Edge(" << c.x1 << "," << c.y1 << "," << c.x2
-                  << "," << c.y2 << ")";
+        return os << c.time << ": Edge(" << c.v1 << "," << c.v2 << ")";
     }
     return os;
   }
 };
 
 struct VertexConstraint {
-  VertexConstraint(int time, int x, int y) : time(time), x(x), y(y) {}
+  VertexConstraint(int time, int v) : time(time), v(v) {}
   int time;
-  int x;
-  int y;
+  int v;
 
   bool operator<(const VertexConstraint& other) const {
-    return std::tie(time, x, y) < std::tie(other.time, other.x, other.y);
+    return std::tie(time, v) < std::tie(other.time, other.v);
   }
 
   bool operator==(const VertexConstraint& other) const {
-    return std::tie(time, x, y) == std::tie(other.time, other.x, other.y);
+    return std::tie(time, v) == std::tie(other.time, other.v);
   }
 
   friend std::ostream& operator<<(std::ostream& os, const VertexConstraint& c) {
-    return os << "VC(" << c.time << "," << c.x << "," << c.y << ")";
+    return os << "VC(" << c.time << "," << c.v << ")";
   }
 };
 
@@ -128,37 +108,30 @@ namespace std {
 template <>
 struct hash<VertexConstraint> {
   size_t operator()(const VertexConstraint& s) const {
-    size_t seed = 0;
-    boost::hash_combine(seed, s.time);
-    boost::hash_combine(seed, s.x);
-    boost::hash_combine(seed, s.y);
-    return seed;
+    size_t hash = 0;
+    boost::hash_combine(hash, s.time);
+    boost::hash_combine(hash, s.v);
+    return hash;
   }
 };
 }  // namespace std
 
 struct EdgeConstraint {
-  EdgeConstraint(int time, int x1, int y1, int x2, int y2)
-      : time(time), x1(x1), y1(y1), x2(x2), y2(y2) {}
+  EdgeConstraint(int time, int v1, int v2) : time(time), v1(v1), v2(v2) {}
   int time;
-  int x1;
-  int y1;
-  int x2;
-  int y2;
+  int v1;
+  int v2;
 
   bool operator<(const EdgeConstraint& other) const {
-    return std::tie(time, x1, y1, x2, y2) <
-           std::tie(other.time, other.x1, other.y1, other.x2, other.y2);
+    return std::tie(time, v1, v2) < std::tie(other.time, other.v1, other.v2);
   }
 
   bool operator==(const EdgeConstraint& other) const {
-    return std::tie(time, x1, y1, x2, y2) ==
-           std::tie(other.time, other.x1, other.y1, other.x2, other.y2);
+    return std::tie(time, v1, v2) == std::tie(other.time, other.v1, other.v2);
   }
 
   friend std::ostream& operator<<(std::ostream& os, const EdgeConstraint& c) {
-    return os << "EC(" << c.time << "," << c.x1 << "," << c.y1 << "," << c.x2
-              << "," << c.y2 << ")";
+    return os << "EC(" << c.time << "," << c.v1 << "," << c.v2 << ")";
   }
 };
 
@@ -168,10 +141,8 @@ struct hash<EdgeConstraint> {
   size_t operator()(const EdgeConstraint& s) const {
     size_t seed = 0;
     boost::hash_combine(seed, s.time);
-    boost::hash_combine(seed, s.x1);
-    boost::hash_combine(seed, s.y1);
-    boost::hash_combine(seed, s.x2);
-    boost::hash_combine(seed, s.y2);
+    boost::hash_combine(seed, s.v1);
+    boost::hash_combine(seed, s.v2);
     return seed;
   }
 };
@@ -246,12 +217,13 @@ struct hash<Location> {
 ///
 class Environment {
  public:
-  Environment(size_t dimx, size_t dimy, std::unordered_set<Location> obstacles,
-              std::vector<Location> goals)
-      : m_dimx(dimx),
-        m_dimy(dimy),
-        m_obstacles(std::move(obstacles)),
+  Environment(const std::vector<Location>& nodePositions,
+              const std::vector<std::vector<int>>& adjacecyList,
+              std::vector<int> goals)
+      : m_nodePositions(nodePositions),
+        m_adjacecyList(adjacecyList),
         m_goals(std::move(goals)),
+        m_nodes(nodePositions.size()),
         m_agentIdx(0),
         m_constraints(nullptr),
         m_lastGoalConstraint(-1),
@@ -267,21 +239,22 @@ class Environment {
     m_constraints = constraints;
     m_lastGoalConstraint = -1;
     for (const auto& vc : constraints->vertexConstraints) {
-      if (vc.x == m_goals[m_agentIdx].x && vc.y == m_goals[m_agentIdx].y) {
+      if (vc.v == m_goals[m_agentIdx]) {
         m_lastGoalConstraint = std::max(m_lastGoalConstraint, vc.time);
       }
     }
   }
 
   int admissibleHeuristic(const State& s) {
-    return std::abs(s.x - m_goals[m_agentIdx].x) +
-           std::abs(s.y - m_goals[m_agentIdx].y);
+    Location l = m_nodePositions[s.v];
+    Location g = m_nodePositions[m_goals[m_agentIdx]];
+    return std::abs(l.x - g.x) + std::abs(l.y - g.y);
   }
 
   // low-level
   int focalStateHeuristic(
       const State& s, int /*gScore*/,
-      const std::vector<PlanResult<State, Action, int> >& solution) {
+      const std::vector<PlanResult<State, Action, int>>& solution) {
     int numConflicts = 0;
     for (size_t i = 0; i < solution.size(); ++i) {
       if (i != m_agentIdx && !solution[i].states.empty()) {
@@ -297,7 +270,7 @@ class Environment {
   // low-level
   int focalTransitionHeuristic(
       const State& s1a, const State& s1b, int /*gScoreS1a*/, int /*gScoreS1b*/,
-      const std::vector<PlanResult<State, Action, int> >& solution) {
+      const std::vector<PlanResult<State, Action, int>>& solution) {
     int numConflicts = 0;
     for (size_t i = 0; i < solution.size(); ++i) {
       if (i != m_agentIdx && !solution[i].states.empty()) {
@@ -313,7 +286,7 @@ class Environment {
 
   // Count all conflicts
   int focalHeuristic(
-      const std::vector<PlanResult<State, Action, int> >& solution) {
+      const std::vector<PlanResult<State, Action, int>>& solution) {
     int numConflicts = 0;
 
     int max_t = 0;
@@ -350,61 +323,36 @@ class Environment {
   }
 
   bool isSolution(const State& s) {
-    return s.x == m_goals[m_agentIdx].x && s.y == m_goals[m_agentIdx].y &&
-           s.time > m_lastGoalConstraint;
+    return s.v == m_goals[m_agentIdx] && s.time > m_lastGoalConstraint;
   }
 
   void getNeighbors(const State& s,
-                    std::vector<Neighbor<State, Action, int> >& neighbors) {
+                    std::vector<Neighbor<State, Action, int>>& neighbors) {
     // std::cout << "#VC " << constraints.vertexConstraints.size() << std::endl;
     // for(const auto& vc : constraints.vertexConstraints) {
     //   std::cout << "  " << vc.time << "," << vc.x << "," << vc.y <<
     //   std::endl;
     // }
     neighbors.clear();
+    // Wait
     {
-      // Wait
-      State n(s.time + 1, s.x, s.y);
+      State n(s.time + 1, s.v);
       if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action::Wait, 1));
+        neighbors.emplace_back(Neighbor<State, Action, int>(n, Action(0), 1));
       }
     }
-    {
-      // Left
-      State n(s.time + 1, s.x - 1, s.y);
+    // Move
+    for (auto& e : m_adjacecyList[s.v]) {
+      State n(s.time + 1, e);
       if (stateValid(n) && transitionValid(s, n)) {
         neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action::Left, 1));
-      }
-    }
-    {
-      // Right
-      State n(s.time + 1, s.x + 1, s.y);
-      if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action::Right, 1));
-      }
-    }
-    {
-      // Up
-      State n(s.time + 1, s.x, s.y + 1);
-      if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(Neighbor<State, Action, int>(n, Action::Up, 1));
-      }
-    }
-    {
-      // Down
-      State n(s.time + 1, s.x, s.y - 1);
-      if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action::Down, 1));
+            Neighbor<State, Action, int>(n, Action(e + 1), 1));
       }
     }
   }
 
   bool getFirstConflict(
-      const std::vector<PlanResult<State, Action, int> >& solution,
+      const std::vector<PlanResult<State, Action, int>>& solution,
       Conflict& result) {
     int max_t = 0;
     for (const auto& sol : solution) {
@@ -422,8 +370,7 @@ class Environment {
             result.agent1 = i;
             result.agent2 = j;
             result.type = Conflict::Vertex;
-            result.x1 = state1.x;
-            result.y1 = state1.y;
+            result.v1 = state1.v;
             // std::cout << "VC " << t << "," << state1.x << "," << state1.y <<
             // std::endl;
             return true;
@@ -443,10 +390,8 @@ class Environment {
             result.agent1 = i;
             result.agent2 = j;
             result.type = Conflict::Edge;
-            result.x1 = state1a.x;
-            result.y1 = state1a.y;
-            result.x2 = state1b.x;
-            result.y2 = state1b.y;
+            result.v1 = state1a.v;
+            result.v2 = state1b.v;
             return true;
           }
         }
@@ -461,17 +406,17 @@ class Environment {
     if (conflict.type == Conflict::Vertex) {
       Constraints c1;
       c1.vertexConstraints.emplace(
-          VertexConstraint(conflict.time, conflict.x1, conflict.y1));
+          VertexConstraint(conflict.time, conflict.v1));
       constraints[conflict.agent1] = c1;
       constraints[conflict.agent2] = c1;
     } else if (conflict.type == Conflict::Edge) {
       Constraints c1;
-      c1.edgeConstraints.emplace(EdgeConstraint(
-          conflict.time, conflict.x1, conflict.y1, conflict.x2, conflict.y2));
+      c1.edgeConstraints.emplace(
+          EdgeConstraint(conflict.time, conflict.v1, conflict.v2));
       constraints[conflict.agent1] = c1;
       Constraints c2;
-      c2.edgeConstraints.emplace(EdgeConstraint(
-          conflict.time, conflict.x2, conflict.y2, conflict.x1, conflict.y1));
+      c2.edgeConstraints.emplace(
+          EdgeConstraint(conflict.time, conflict.v2, conflict.v1));
       constraints[conflict.agent2] = c2;
     }
   }
@@ -489,7 +434,7 @@ class Environment {
 
  private:
   State getState(size_t agentIdx,
-                 const std::vector<PlanResult<State, Action, int> >& solution,
+                 const std::vector<PlanResult<State, Action, int>>& solution,
                  size_t t) {
     assert(agentIdx < solution.size());
     if (t < solution[agentIdx].states.size()) {
@@ -502,23 +447,20 @@ class Environment {
   bool stateValid(const State& s) {
     assert(m_constraints);
     const auto& con = m_constraints->vertexConstraints;
-    return s.x >= 0 && s.x < m_dimx && s.y >= 0 && s.y < m_dimy &&
-           m_obstacles.find(Location(s.x, s.y)) == m_obstacles.end() &&
-           con.find(VertexConstraint(s.time, s.x, s.y)) == con.end();
+    return con.find(VertexConstraint(s.time, s.v)) == con.end();
   }
 
   bool transitionValid(const State& s1, const State& s2) {
     assert(m_constraints);
     const auto& con = m_constraints->edgeConstraints;
-    return con.find(EdgeConstraint(s1.time, s1.x, s1.y, s2.x, s2.y)) ==
-           con.end();
+    return con.find(EdgeConstraint(s1.time, s1.v, s2.v)) == con.end();
   }
 
  private:
-  int m_dimx;
-  int m_dimy;
-  std::unordered_set<Location> m_obstacles;
-  std::vector<Location> m_goals;
+  const std::vector<Location>& m_nodePositions;
+  const std::vector<std::vector<int>>& m_adjacecyList;
+  std::vector<int> m_goals;
+  size_t m_nodes;
   size_t m_agentIdx;
   const Constraints* m_constraints;
   int m_lastGoalConstraint;
@@ -562,29 +504,35 @@ int main(int argc, char* argv[]) {
 
   YAML::Node config = YAML::LoadFile(inputFile);
 
-  std::unordered_set<Location> obstacles;
-  std::vector<Location> goals;
+  std::vector<int> goals;
   std::vector<State> startStates;
 
-  const auto& dim = config["map"]["dimensions"];
-  int dimx = dim[0].as<int>();
-  int dimy = dim[1].as<int>();
+  startStates.emplace_back(State(0, 0));
+  goals.emplace_back(1);
+  startStates.emplace_back(State(0, 1));
+  goals.emplace_back(2);
+  startStates.emplace_back(State(0, 2));
+  goals.emplace_back(3);
+  startStates.emplace_back(State(0, 3));
+  goals.emplace_back(4);
 
-  for (const auto& node : config["map"]["obstacles"]) {
-    obstacles.insert(Location(node[0].as<int>(), node[1].as<int>()));
-  }
+  //  for (const auto& node : config["agents"]) {
+  //    const auto& start = node["start"];
+  //    const auto& goal = node["goal"];
+  //    startStates.emplace_back(State(0, start[0].as<int>(),
+  //    start[1].as<int>()));
+  //    // std::cout << "s: " << startStates.back() << std::endl;
+  //    goals.emplace_back(Location(goal[0].as<int>(), goal[1].as<int>()));
+  //  }
 
-  for (const auto& node : config["agents"]) {
-    const auto& start = node["start"];
-    const auto& goal = node["goal"];
-    startStates.emplace_back(State(0, start[0].as<int>(), start[1].as<int>()));
-    // std::cout << "s: " << startStates.back() << std::endl;
-    goals.emplace_back(Location(goal[0].as<int>(), goal[1].as<int>()));
-  }
+  std::vector<Location> np = {Location(1, 3), Location(3, 3), Location(2, 2),
+                              Location(1, 1), Location(3, 1)};
 
-  Environment mapf(dimx, dimy, obstacles, goals);
+  std::vector<std::vector<int>> al = {{2, 3}, {0, 2}, {1, 3}, {2, 4}, {1, 2}};
+
+  Environment mapf(np, al, goals);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
-  std::vector<PlanResult<State, Action, int> > solution;
+  std::vector<PlanResult<State, Action, int>> solution;
 
   Timer timer;
   bool success = cbs.search(startStates, solution);
@@ -623,8 +571,8 @@ int main(int argc, char* argv[]) {
 
       out << "  agent" << a << ":" << std::endl;
       for (const auto& state : solution[a].states) {
-        out << "    - x: " << state.first.x << std::endl
-            << "      y: " << state.first.y << std::endl
+        out << "    - x: " << np[state.first.v].x << std::endl
+            << "      y: " << np[state.first.v].y << std::endl
             << "      t: " << state.second << std::endl;
       }
     }
