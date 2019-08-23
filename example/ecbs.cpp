@@ -6,6 +6,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#define REBUILT_FOCAL_LIST
 #include <libMultiRobotPlanning/csv_reader.h>
 #include <libMultiRobotPlanning/ecbs.hpp>
 #include "timer.hpp"
