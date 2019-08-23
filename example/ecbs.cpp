@@ -6,8 +6,11 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <libMultiRobotPlanning/csv_reader.h>
 #include <libMultiRobotPlanning/ecbs.hpp>
 #include "timer.hpp"
+
+const uint64_t MAX_FILE_SIZE{1000000};
 
 using libMultiRobotPlanning::ECBS;
 using libMultiRobotPlanning::Neighbor;
@@ -44,15 +47,12 @@ struct hash<State> {
 struct Action {
   Action(int where) : where(where) {}
 
-  bool move() const { return where != 0; }
-  int toEdge() const { return where - 1; }
-
   int where;
 };
 
 std::ostream& operator<<(std::ostream& os, const Action& a) {
-  if (a.move())
-    os << "to " << a.toEdge() << " ";
+  if (a.where > 0)
+    os << "to " << a.where - 1 << " ";
   else {
     os << "wait";
   }
@@ -342,11 +342,11 @@ class Environment {
       }
     }
     // Move
-    for (auto& e : m_adjacecyList[s.v]) {
-      State n(s.time + 1, e);
+    for (uint i = 0; i <= m_adjacecyList[s.v].size(); i++) {
+      State n(s.time + 1, m_adjacecyList[s.v][i]);
       if (stateValid(n) && transitionValid(s, n)) {
         neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action(e + 1), 1));
+            Neighbor<State, Action, int>(n, Action(i + 1), 1));
       }
     }
   }
@@ -469,18 +469,23 @@ class Environment {
 };
 
 int main(int argc, char* argv[]) {
+  std::cout << "main"
+            << "\n";
   namespace po = boost::program_options;
   // Declare the supported options.
   po::options_description desc("Allowed options");
-  std::string inputFile;
+  std::string adjacencylistfile;
+  std::string positionsfile;
   std::string outputFile;
   float w;
   bool verbose{false};
   desc.add_options()("help", "produce help message")(
-      "input,i", po::value<std::string>(&inputFile)->required(),
-      "input file (YAML)")("output,o",
-                           po::value<std::string>(&outputFile)->required(),
-                           "output file (YAML)")(
+      "adjacencylist,a", po::value<std::string>(&adjacencylistfile)->required(),
+      "input file with adjacencylist (csv)")(
+      "positionsfile,p", po::value<std::string>(&positionsfile)->required(),
+      "input file with positionsfile (csv)")(
+      "output,o", po::value<std::string>(&outputFile)->required(),
+      "output file (YAML)")(
       "suboptimality,w", po::value<float>(&w)->default_value(1.0),
       "suboptimality bound")("verbose,v", "print more info");
 
@@ -502,7 +507,46 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  YAML::Node config = YAML::LoadFile(inputFile);
+  // adjacency list
+  std::ifstream infile;
+  infile.open(adjacencylistfile);
+  char buffer[MAX_FILE_SIZE];
+  infile.read(buffer, sizeof(buffer));
+  buffer[infile.tellg()] = '\0';
+  std::vector<Row> result = parse(buffer, strlen(buffer));
+
+  std::vector<std::vector<int>> al;
+  al.resize(result.size());
+  for (size_t r = 0; r < result.size(); r++) {
+    Row& row = result[r];
+    al[r] = std::vector<int>();
+    for (std::string& s : row) {
+      size_t n = std::stoi(s);
+      if (*row.begin() == s) {
+        // first entry of row is node number
+        BOOST_ASSERT(n == r);
+      } else {
+        al[r].push_back(n);
+      }
+    }
+  }
+  std::cout << "al.size():" << al.size() << std::endl;
+
+  // node positions
+  std::ifstream infilep;
+  infilep.open(positionsfile);
+  char buffernp[MAX_FILE_SIZE];
+  infilep.read(buffernp, sizeof(buffernp));
+  buffernp[infilep.tellg()] = '\0';
+  result = parse(buffernp, strlen(buffernp));
+
+  std::vector<Location> np = std::vector<Location>();
+  for (size_t r = 0; r < result.size(); r++) {
+    Row& row = result[r];
+    np.emplace_back(Location(std::stoi(row[0]), std::stoi(row[1])));
+  }
+  BOOST_ASSERT(np.size() == result.size());
+  std::cout << "np.size():" << np.size() << std::endl;
 
   std::vector<int> goals;
   std::vector<State> startStates;
@@ -511,24 +555,8 @@ int main(int argc, char* argv[]) {
   goals.emplace_back(1);
   startStates.emplace_back(State(0, 1));
   goals.emplace_back(2);
-  startStates.emplace_back(State(0, 2));
-  goals.emplace_back(3);
-  startStates.emplace_back(State(0, 3));
-  goals.emplace_back(4);
-
-  //  for (const auto& node : config["agents"]) {
-  //    const auto& start = node["start"];
-  //    const auto& goal = node["goal"];
-  //    startStates.emplace_back(State(0, start[0].as<int>(),
-  //    start[1].as<int>()));
-  //    // std::cout << "s: " << startStates.back() << std::endl;
-  //    goals.emplace_back(Location(goal[0].as<int>(), goal[1].as<int>()));
-  //  }
-
-  std::vector<Location> np = {Location(1, 3), Location(3, 3), Location(2, 2),
-                              Location(1, 1), Location(3, 1)};
-
-  std::vector<std::vector<int>> al = {{2, 3}, {0, 2}, {1, 3}, {2, 4}, {1, 2}};
+  startStates.emplace_back(State(0, 50));
+  goals.emplace_back(99);
 
   Environment mapf(np, al, goals);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
