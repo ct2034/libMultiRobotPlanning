@@ -528,13 +528,17 @@ int main(int argc, char* argv[]) {
   std::string inputFile;
   std::string outputFile;
   float w;
-  desc.add_options()("help", "produce help message")(
-      "input,i", po::value<std::string>(&inputFile)->required(),
-      "input file (YAML)")("output,o",
-                           po::value<std::string>(&outputFile)->required(),
-                           "output file (YAML)")(
-      "suboptimality,w", po::value<float>(&w)->default_value(1.0),
-      "suboptimality bound");
+  bool verbose{false};
+  desc.add_options()
+          ("help", "produce help message")
+          ("input,i", po::value<std::string>(&inputFile)->required(),
+           "input file (YAML)")
+          ("output,o",
+           po::value<std::string>(&outputFile)->required(),
+           "output file (YAML)")
+          ("suboptimality,w", po::value<float>(&w)->default_value(1.0),
+           "suboptimality bound")
+          ("verbose,v", "print more info");
 
   try {
     po::variables_map vm;
@@ -544,6 +548,9 @@ int main(int argc, char* argv[]) {
     if (vm.count("help") != 0u) {
       std::cout << desc << "\n";
       return 0;
+    }
+    if (vm.count("verbose")) {
+      verbose = true;
     }
   } catch (po::error& e) {
     std::cerr << e.what() << std::endl << std::endl;
@@ -599,14 +606,16 @@ int main(int argc, char* argv[]) {
     out << "  lowLevelExpanded: " << mapf.lowLevelExpanded() << std::endl;
     out << "schedule:" << std::endl;
     for (size_t a = 0; a < solution.size(); ++a) {
-      // std::cout << "Solution for: " << a << std::endl;
-      // for (size_t i = 0; i < solution[a].actions.size(); ++i) {
-      //   std::cout << solution[a].states[i].second << ": " <<
-      //   solution[a].states[i].first << "->" << solution[a].actions[i].first
-      //   << "(cost: " << solution[a].actions[i].second << ")" << std::endl;
-      // }
-      // std::cout << solution[a].states.back().second << ": " <<
-      // solution[a].states.back().first << std::endl;
+        if(verbose) {
+           std::cout << "Solution for: " << a << std::endl;
+           for (size_t i = 0; i < solution[a].actions.size(); ++i) {
+             std::cout << solution[a].states[i].second << ": " <<
+             solution[a].states[i].first << "->" << solution[a].actions[i].first
+             << "(cost: " << solution[a].actions[i].second << ")" << std::endl;
+           }
+           std::cout << solution[a].states.back().second << ": " <<
+           solution[a].states.back().first << std::endl;
+        }
 
       out << "  agent" << a << ":" << std::endl;
       for (const auto& state : solution[a].states) {
