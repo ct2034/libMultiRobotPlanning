@@ -15,6 +15,7 @@ GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
 TMP_JOBS_FNAME = "tmp_jobs.csv"
 SUBOPTIMALITY = 2.
+TIMEOUT_S = 20
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -71,22 +72,26 @@ def plan_with_n_jobs(n_jobs, N, graph_fname):
         "-o", "output.yaml",
         "-w", str(SUBOPTIMALITY)]
     logging.debug(" ".join(cmd))
-    cp = subprocess.run(cmd,
-        stdout=subprocess.PIPE
-    )
+    try:
+        cp = subprocess.run(cmd,
+            stdout=subprocess.PIPE,
+            timeout=TIMEOUT_S
+        )
+        outstr = cp.stdout.decode('utf-8')
+        logging.debug(outstr)
+        rline = re.compile("done; cost: [0-9]+")
+        mline = rline.findall(outstr)[0]
+        logging.debug("mline: >" + mline)
+        rnr = re.compile("[0-9]+")
+        cost = float(
+            rnr.findall(mline)[0]
+        )
+    except subprocess.TimeoutExpired:
+        logging.warn("timeout")
+        cost = TIMEOUT_S
     t = time.time() - start_time
     logging.debug("Took " + format(t, ".1f") + "s")
-    outstr = cp.stdout.decode('utf-8')
-    logging.debug(outstr)
     os.remove(TMP_JOBS_FNAME)
-
-    rline = re.compile("done; cost: [0-9]+")
-    mline = rline.findall(outstr)[0]
-    logging.debug("mline: >" + mline)
-    rnr = re.compile("[0-9]+")
-    cost = float(
-        rnr.findall(mline)[0]
-    )
     return cost, t
 
 
