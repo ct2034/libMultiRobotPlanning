@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <utility>
 
 #include <boost/functional/hash.hpp>
 #include <boost/program_options.hpp>
@@ -220,9 +221,11 @@ class Environment {
  public:
   Environment(const std::vector<Location>& nodePositions,
               const std::vector<std::vector<int>>& adjacecyList,
+              std::map<std::pair<int, int>, double>& edgew,
               std::vector<int> goals)
       : m_nodePositions(nodePositions),
         m_adjacecyList(adjacecyList),
+        m_edgew(edgew),
         m_goals(std::move(goals)),
         m_nodes(nodePositions.size()),
         m_agentIdx(0),
@@ -249,7 +252,11 @@ class Environment {
   int admissibleHeuristic(const State& s) {
     Location l = m_nodePositions[s.v];
     Location g = m_nodePositions[m_goals[m_agentIdx]];
-    return std::abs(l.x - g.x) + std::abs(l.y - g.y);
+    return distNorm(l, g);
+  }
+
+  double static distNorm(const Location& a, const Location& b) {
+    return std::sqrt(std::pow(a.x - b.x, 2) + std::pow(a.y - b.y, 2));
   }
 
   // low-level
@@ -339,15 +346,16 @@ class Environment {
     {
       State n(s.time + 1, s.v);
       if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(Neighbor<State, Action, int>(n, Action(0), 1));
+        neighbors.emplace_back(Neighbor<State, Action, int>(
+            n, Action(0), 20));  // todo: find mean edgew
       }
     }
     // Move
     for (uint i = 0; i < m_adjacecyList[s.v].size(); i++) {
       State n(s.time + 1, m_adjacecyList[s.v][i]);
       if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(
-            Neighbor<State, Action, int>(n, Action(i + 1), 1));
+        neighbors.emplace_back(Neighbor<State, Action, int>(
+            n, Action(i + 1), (int)m_edgew[{s.v, n.v}]));
       }
     }
   }
@@ -460,6 +468,7 @@ class Environment {
  private:
   const std::vector<Location>& m_nodePositions;
   const std::vector<std::vector<int>>& m_adjacecyList;
+  std::map<std::pair<int, int>, double>& m_edgew;
   std::vector<int> m_goals;
   size_t m_nodes;
   size_t m_agentIdx;
@@ -511,15 +520,32 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // node positions
+  std::ifstream infilep;
+  infilep.open(positionsfile);
+  char buffernp[MAX_FILE_SIZE];
+  infilep.read(buffernp, sizeof(buffernp));
+  buffernp[infilep.tellg()] = '\0';
+  std::vector<Row> result = parse(buffernp, strlen(buffernp));
+
+  std::vector<Location> np = std::vector<Location>();
+  for (size_t r = 0; r < result.size(); r++) {
+    Row& row = result[r];
+    np.emplace_back(Location(std::stoi(row[0]), std::stoi(row[1])));
+  }
+  BOOST_ASSERT(np.size() == result.size());
+  std::cout << "np.size():" << np.size() << std::endl;
+
   // adjacency list
   std::ifstream infile;
   infile.open(adjacencylistfile);
   char buffer[MAX_FILE_SIZE];
   infile.read(buffer, sizeof(buffer));
   buffer[infile.tellg()] = '\0';
-  std::vector<Row> result = parse(buffer, strlen(buffer));
+  result = parse(buffer, strlen(buffer));
 
   std::vector<std::vector<int>> al;
+  std::map<std::pair<int, int>, double> edgew;  // edge weigths
   al.resize(result.size());
   for (size_t r = 0; r < result.size(); r++) {
     Row& row = result[r];
@@ -531,26 +557,13 @@ int main(int argc, char* argv[]) {
         BOOST_ASSERT(n == r);
       } else {
         al[r].push_back(n);
+        double d = Environment::distNorm(np[r], np[n]);
+        edgew[{r, n}] = d;
+        edgew[{n, r}] = d;
       }
     }
   }
   std::cout << "al.size():" << al.size() << std::endl;
-
-  // node positions
-  std::ifstream infilep;
-  infilep.open(positionsfile);
-  char buffernp[MAX_FILE_SIZE];
-  infilep.read(buffernp, sizeof(buffernp));
-  buffernp[infilep.tellg()] = '\0';
-  result = parse(buffernp, strlen(buffernp));
-
-  std::vector<Location> np = std::vector<Location>();
-  for (size_t r = 0; r < result.size(); r++) {
-    Row& row = result[r];
-    np.emplace_back(Location(std::stoi(row[0]), std::stoi(row[1])));
-  }
-  BOOST_ASSERT(np.size() == result.size());
-  std::cout << "np.size():" << np.size() << std::endl;
 
   // jobs
   std::ifstream infilej;
@@ -571,7 +584,7 @@ int main(int argc, char* argv[]) {
   std::cout << "startStates.size():" << startStates.size() << std::endl;
   std::cout << "goals.size():" << goals.size() << std::endl;
 
-  Environment mapf(np, al, goals);
+  Environment mapf(np, al, edgew, goals);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
   std::vector<PlanResult<State, Action, int>> solution;
 
