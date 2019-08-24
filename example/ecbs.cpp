@@ -343,7 +343,7 @@ class Environment {
       }
     }
     // Move
-    for (uint i = 0; i <= m_adjacecyList[s.v].size(); i++) {
+    for (uint i = 0; i < m_adjacecyList[s.v].size(); i++) {
       State n(s.time + 1, m_adjacecyList[s.v][i]);
       if (stateValid(n) && transitionValid(s, n)) {
         neighbors.emplace_back(
@@ -477,6 +477,7 @@ int main(int argc, char* argv[]) {
   po::options_description desc("Allowed options");
   std::string adjacencylistfile;
   std::string positionsfile;
+  std::string jobsfile;
   std::string outputFile;
   float w;
   bool verbose{false};
@@ -485,6 +486,8 @@ int main(int argc, char* argv[]) {
       "input file with adjacencylist (csv)")(
       "positionsfile,p", po::value<std::string>(&positionsfile)->required(),
       "input file with positionsfile (csv)")(
+      "jobsfile,j", po::value<std::string>(&jobsfile)->required(),
+      "input file with jobssfile (csv)")(
       "output,o", po::value<std::string>(&outputFile)->required(),
       "output file (YAML)")(
       "suboptimality,w", po::value<float>(&w)->default_value(1.0),
@@ -549,15 +552,24 @@ int main(int argc, char* argv[]) {
   BOOST_ASSERT(np.size() == result.size());
   std::cout << "np.size():" << np.size() << std::endl;
 
+  // jobs
+  std::ifstream infilej;
+  infilej.open(jobsfile);
+  char bufferj[MAX_FILE_SIZE];
+  infilej.read(bufferj, sizeof(bufferj));
+  bufferj[infilej.tellg()] = '\0';
+  result = parse(bufferj, strlen(bufferj));
+
   std::vector<int> goals;
   std::vector<State> startStates;
-
-  startStates.emplace_back(State(0, 0));
-  goals.emplace_back(1);
-  startStates.emplace_back(State(0, 1));
-  goals.emplace_back(2);
-  startStates.emplace_back(State(0, 50));
-  goals.emplace_back(99);
+  for (size_t r = 0; r < result.size(); r++) {
+    Row& row = result[r];
+    startStates.emplace_back(State(0, std::stoi(row[0])));
+    goals.emplace_back(std::stoi(row[1]));
+  }
+  BOOST_ASSERT(goals.size() == startStates.size());
+  std::cout << "startStates.size():" << startStates.size() << std::endl;
+  std::cout << "goals.size():" << goals.size() << std::endl;
 
   Environment mapf(np, al, goals);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
