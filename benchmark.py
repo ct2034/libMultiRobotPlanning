@@ -14,8 +14,8 @@ GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
 TMP_JOBS_FNAME = "tmp_jobs.csv"
-SUBOPTIMALITY = 2.
-TIMEOUT_S = 20
+SUBOPTIMALITY = 1.5
+TIMEOUT_S = 2400  # 1h
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -48,7 +48,7 @@ def get_unique(path):
 
 
 def plan_with_n_jobs(n_jobs, N, graph_fname):
-    # random.seed(1)
+    random.seed(0)
     starts = list(range(N))
     goals = list(range(N))
     random.shuffle(starts)
@@ -69,7 +69,7 @@ def plan_with_n_jobs(n_jobs, N, graph_fname):
         "-a", graph_fname,
         "-p", GRAPH_NP_FNAME,
         "-j", TMP_JOBS_FNAME,
-        "-o", "output.yaml",
+        "-o", GRAPH_NP_FNAME.split(".")[0]+"_n_jobs-"+str(n_jobs)+".yaml",
         "-w", str(SUBOPTIMALITY)]
     logging.debug(" ".join(cmd))
     try:
@@ -85,7 +85,7 @@ def plan_with_n_jobs(n_jobs, N, graph_fname):
         rnr = re.compile("[0-9]+")
         cost = float(
             rnr.findall(mline)[0]
-        )
+        ) / n_jobs
     except subprocess.TimeoutExpired:
         logging.warn("timeout")
         cost = TIMEOUT_S
@@ -141,22 +141,21 @@ if __name__ == '__main__':
     if sys.argv[1] == "eval":
         N = max_vertex()
         # ns = [1, 2, 3, 5, 10, 20, 30, 50, 100]
-        ns = range(1, 20)
-        # ns = range(10, 120, 10)
+        # ns = range(1, 20)
+        ns = range(10, 190, 20)
         if not os.path.exists(GRAPH_AL_UNDIR_FNAME):
             make_undir_graph_file(GRAPH_AL_FNAME, GRAPH_AL_UNDIR_FNAME)
         results = (ns,)
-        for graph_fname in [GRAPH_AL_UNDIR_FNAME, GRAPH_AL_FNAME]:
+        for n_jobs in ns:
             cs = []
             ts = []
-            logging.info("graph_fname: %s" % graph_fname)
-            for n_jobs in ns:
+            for graph_fname in [GRAPH_AL_UNDIR_FNAME, GRAPH_AL_FNAME]:
                 cost, t = plan_with_n_jobs(n_jobs, N, graph_fname)
                 cs.append(cost)
                 ts.append(t)
-                logging.info("n_jobs: %3d | c: % 7.2f | t: % 7.2fs" %
-                      (n_jobs, cost, t))
-            assert len(cs) == len(ns), "all ns should have a cost"
+                logging.info("graph_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
+                      (graph_fname, n_jobs, cost, t))
+            assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
         write_results(results)
     elif sys.argv[1] == "plot":
