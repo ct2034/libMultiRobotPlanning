@@ -1,6 +1,6 @@
 #include <fstream>
 #include <iostream>
-#include <utility>
+#include <numeric>
 
 #include <boost/functional/hash.hpp>
 #include <boost/program_options.hpp>
@@ -232,7 +232,16 @@ class Environment {
         m_constraints(nullptr),
         m_lastGoalConstraint(-1),
         m_highLevelExpanded(0),
-        m_lowLevelExpanded(0) {}
+        m_lowLevelExpanded(0) {
+    m_meanEdgew =
+        (int)(std::accumulate(
+                  edgew.begin(), edgew.end(), 0,
+                  [](double x,
+                     std::map<std::pair<int, int>, double>::value_type& v) {
+                    return x + v.second;
+                  }) /
+              edgew.size());
+  }
 
   Environment(const Environment&) = delete;
   Environment& operator=(const Environment&) = delete;
@@ -346,8 +355,8 @@ class Environment {
     {
       State n(s.time + 1, s.v);
       if (stateValid(n) && transitionValid(s, n)) {
-        neighbors.emplace_back(Neighbor<State, Action, int>(
-            n, Action(0), 20));  // todo: find mean edgew
+        neighbors.emplace_back(
+            Neighbor<State, Action, int>(n, Action(0), m_meanEdgew));
       }
     }
     // Move
@@ -471,6 +480,7 @@ class Environment {
   std::map<std::pair<int, int>, double>& m_edgew;
   std::vector<int> m_goals;
   size_t m_nodes;
+  int m_meanEdgew;
   size_t m_agentIdx;
   const Constraints* m_constraints;
   int m_lastGoalConstraint;
