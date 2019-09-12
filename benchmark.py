@@ -14,8 +14,10 @@ GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
 TMP_JOBS_FNAME = "tmp_jobs.csv"
-SUBOPTIMALITY = 1.5
-TIMEOUT_S = 2400  # 1h
+INIT_JOBS_FNAME = "init_jobs.csv"
+SUBOPTIMALITY = 1.3
+TIMEOUT_S = 120  # 2min
+MAX_COST = 9999
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -47,18 +49,39 @@ def get_unique(path):
     return unique, len(unique)
 
 
-def plan_with_n_jobs(n_jobs, N, graph_fname):
-    random.seed(0)
-    starts = list(range(N))
-    goals = list(range(N))
-    random.shuffle(starts)
-    random.shuffle(goals)
-    starts = starts[:n_jobs]
-    goals = goals[:n_jobs]
-    try:
-        os.remove(TMP_JOBS_FNAME)
-    except FileNotFoundError:
-        pass
+def create_initial_jobs_file(N, n_jobs):
+    assert n_jobs <= N, "can only have as many jobs as nodes"
+    starts_used = set()
+    goals_used = set()
+    starts = []
+    goals = []
+    for _ in range(n_jobs):
+        ok = False
+        while not ok:
+            a_start = random.randint(0, N-1)
+            a_goal = random.randint(0, N-1)
+            if a_start in starts_used or a_goal in goals_used:
+                ok = False
+            else:
+                c, t = plan([a_start], [a_goal], GRAPH_AL_FNAME, 5)
+                if c != MAX_COST:
+                    ok = True
+                else:
+                    ok = False
+                    logging.warning("{} -> {} does not work".format(a_start, a_goal))
+        starts.append(a_start)
+        starts_used.add(a_start)
+        goals.append(a_goal)
+        goals_used.add(a_goal)
+    with open(INIT_JOBS_FNAME, "w") as f:
+        jobswriter = csv.writer(f, delimiter=' ')
+        for j in range(n_jobs):
+            jobswriter.writerow([starts[j], goals[j]])
+
+
+def plan(starts, goals, graph_fname, timeout=TIMEOUT_S):
+    n_jobs = len(starts)
+    assert len(starts) == len(goals), "mus have as many starts as goals"
     with open(TMP_JOBS_FNAME, "w") as f:
         jobswriter = csv.writer(f, delimiter=' ')
         for j in range(n_jobs):
@@ -88,11 +111,25 @@ def plan_with_n_jobs(n_jobs, N, graph_fname):
         ) / n_jobs
     except subprocess.TimeoutExpired:
         logging.warn("timeout")
-        cost = TIMEOUT_S
+        cost = MAX_COST
     t = time.time() - start_time
     logging.debug("Took " + format(t, ".1f") + "s")
-    os.remove(TMP_JOBS_FNAME)
+    try:
+        os.remove(TMP_JOBS_FNAME)
+    except FileNotFoundError:
+        pass
     return cost, t
+
+
+def plan_with_n_jobs(n_jobs, N, graph_fname):
+    random.seed(2034)
+    starts = list(range(N))
+    goals = list(range(N))
+    random.shuffle(starts)
+    random.shuffle(goals)
+    starts = starts[:n_jobs]
+    goals = goals[:n_jobs]
+    return plan(starts, goals)
 
 
 def make_undir_graph_file(graph_fname, graph_undir_fname):
@@ -142,7 +179,7 @@ if __name__ == '__main__':
         N = max_vertex()
         # ns = [1, 2, 3, 5, 10, 20, 30, 50, 100]
         # ns = range(1, 20)
-        ns = range(10, 190, 20)
+        ns = range(10, 190, 10)
         if not os.path.exists(GRAPH_AL_UNDIR_FNAME):
             make_undir_graph_file(GRAPH_AL_FNAME, GRAPH_AL_UNDIR_FNAME)
         results = (ns,)
@@ -158,6 +195,8 @@ if __name__ == '__main__':
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
         write_results(results)
+    elif sys.argv[1] == "jobsfile":
+        create_initial_jobs_file(200, 100)
     elif sys.argv[1] == "plot":
         (ns, cs_u, ts_u, cs_d, ts_d) = read_results()
         x = range(len(ns))

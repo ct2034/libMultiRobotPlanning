@@ -138,15 +138,30 @@ class AStarEpsilon {
         if (bestFScore > oldBestFScore) {
           // std::cout << "oldBestFScore: " << oldBestFScore << " newBestFScore:
           // " << bestFScore << std::endl;
+          //          auto iter = openSet.ordered_begin();
+          //          auto iterEnd = openSet.ordered_end();
+          //          for (; iter != iterEnd; ++iter) {
+          //            Cost val = iter->fScore;
+          //            if (val > oldBestFScore * m_w && val <= bestFScore *
+          //            m_w) {
+          //              const Node& n = *iter;
+          //              focalSet.push(n.handle);
+          //            }
+          //            if (val > bestFScore * m_w) {
+          //              break;
+          //            }
+          //          }
+          focalSet.clear();
+          const auto& top = openSet.top();
+          Cost bestVal = top.fScore;
           auto iter = openSet.ordered_begin();
           auto iterEnd = openSet.ordered_end();
           for (; iter != iterEnd; ++iter) {
             Cost val = iter->fScore;
-            if (val > oldBestFScore * m_w && val <= bestFScore * m_w) {
-              const Node& n = *iter;
-              focalSet.push(n.handle);
-            }
-            if (val > bestFScore * m_w) {
+            if (val <= bestVal * m_w) {
+              const auto& s = *iter;
+              focalSet.push(s.handle);
+            } else {
               break;
             }
           }

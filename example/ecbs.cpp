@@ -222,26 +222,17 @@ class Environment {
   Environment(const std::vector<Location>& nodePositions,
               const std::vector<std::vector<int>>& adjacecyList,
               std::map<std::pair<int, int>, double>& edgew,
-              std::vector<int> goals)
+              std::vector<int> goals, int meanEdgew)
       : m_nodePositions(nodePositions),
         m_adjacecyList(adjacecyList),
         m_edgew(edgew),
         m_goals(std::move(goals)),
-        m_nodes(nodePositions.size()),
+        m_meanEdgew(meanEdgew),
         m_agentIdx(0),
         m_constraints(nullptr),
         m_lastGoalConstraint(-1),
         m_highLevelExpanded(0),
-        m_lowLevelExpanded(0) {
-    m_meanEdgew =
-        (int)(std::accumulate(
-                  edgew.begin(), edgew.end(), 0,
-                  [](double x,
-                     std::map<std::pair<int, int>, double>::value_type& v) {
-                    return x + v.second;
-                  }) /
-              edgew.size());
-  }
+        m_lowLevelExpanded(0) {}
 
   Environment(const Environment&) = delete;
   Environment& operator=(const Environment&) = delete;
@@ -479,7 +470,6 @@ class Environment {
   const std::vector<std::vector<int>>& m_adjacecyList;
   std::map<std::pair<int, int>, double>& m_edgew;
   std::vector<int> m_goals;
-  size_t m_nodes;
   int m_meanEdgew;
   size_t m_agentIdx;
   const Constraints* m_constraints;
@@ -594,7 +584,17 @@ int main(int argc, char* argv[]) {
   std::cout << "startStates.size():" << startStates.size() << std::endl;
   std::cout << "goals.size():" << goals.size() << std::endl;
 
-  Environment mapf(np, al, edgew, goals);
+  int meanEdgew =
+      (int)(std::accumulate(
+                edgew.begin(), edgew.end(), 0,
+                [](double x,
+                   std::map<std::pair<int, int>, double>::value_type& v) {
+                  return x + v.second;
+                }) /
+            edgew.size());
+
+  std::cout << "w: " << w << std::endl;
+  Environment mapf(np, al, edgew, goals, meanEdgew);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
   std::vector<PlanResult<State, Action, int>> solution;
 
