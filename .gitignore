@@ -2,3 +2,4 @@ build/
 __pycache__/
 *.kdev4*
 CMakeLists.txt.user
+*.pyc
