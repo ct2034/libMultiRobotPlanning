@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 import csv
 from itertools import dropwhile
 from matplotlib import pyplot as plt
@@ -9,17 +9,20 @@ import logging
 import subprocess
 import sys
 import time
+import yaml
+from math import sqrt
 
 GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
 TMP_JOBS_FNAME = "tmp_jobs.csv"
+TMP_OUT_FNAME = "/tmp/tmp_out.yaml"
 INIT_JOBS_FNAME = "init_jobs.csv"
 SUBOPTIMALITY = 1.3
 TIMEOUT_S = 120  # 2min
 MAX_COST = 9999
 
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 def max_vertex():
@@ -63,7 +66,7 @@ def create_initial_jobs_file(N, n_jobs):
             if a_start in starts_used or a_goal in goals_used:
                 ok = False
             else:
-                c, t = plan([a_start], [a_goal], GRAPH_AL_FNAME, 5)
+                c, t = plan([a_start], [a_goal], GRAPH_AL_FNAME, GRAPH_NP_FNAME, 5)
                 if c != MAX_COST:
                     ok = True
                 else:
@@ -79,7 +82,7 @@ def create_initial_jobs_file(N, n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
 
 
-def plan(starts, goals, graph_fname, timeout=TIMEOUT_S):
+def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S):
     n_jobs = len(starts)
     assert len(starts) == len(goals), "mus have as many starts as goals"
     with open(TMP_JOBS_FNAME, "w") as f:
@@ -88,40 +91,57 @@ def plan(starts, goals, graph_fname, timeout=TIMEOUT_S):
             jobswriter.writerow([starts[j], goals[j]])
     start_time = time.time()
     cmd = [
-        "build/ecbs",
-        "-a", graph_fname,
-        "-p", GRAPH_NP_FNAME,
+        os.path.dirname(__file__) + "/build/ecbs",
+        "-a", graph_adjlist_fname,
+        "-p", graph_pos_fname,
         "-j", TMP_JOBS_FNAME,
-        "-o", GRAPH_NP_FNAME.split(".")[0]+"_n_jobs-"+str(n_jobs)+".yaml",
+        "-o", TMP_OUT_FNAME,
         "-w", str(SUBOPTIMALITY)]
     logging.debug(" ".join(cmd))
     try:
-        cp = subprocess.run(cmd,
-            stdout=subprocess.PIPE,
-            timeout=TIMEOUT_S
-        )
-        outstr = cp.stdout.decode('utf-8')
+        outstr = subprocess.check_output(cmd)
         logging.debug(outstr)
-        rline = re.compile("done; cost: [0-9]+")
-        mline = rline.findall(outstr)[0]
-        logging.debug("mline: >" + mline)
-        rnr = re.compile("[0-9]+")
-        cost = float(
-            rnr.findall(mline)[0]
-        ) / n_jobs
-    except subprocess.TimeoutExpired:
-        logging.warn("timeout")
-        cost = MAX_COST
-    t = time.time() - start_time
-    logging.debug("Took " + format(t, ".1f") + "s")
+    except subprocess.CalledProcessError as e:
+        logging.warn("CalledProcessError")
+        logging.warn(e.output)
+        return MAX_COST, 0
     try:
         os.remove(TMP_JOBS_FNAME)
+    except FileNotFoundError:
+        pass
+    if not os.path.exists(TMP_OUT_FNAME):
+        logging.error(outstr)
+    cost = get_cost_from_outfile(TMP_OUT_FNAME)
+    t = time.time() - start_time
+    logging.info("cost: " + str(cost))
+    try:
+        os.remove(TMP_OUT_FNAME)
     except FileNotFoundError:
         pass
     return cost, t
 
 
-def plan_with_n_jobs(n_jobs, N, graph_fname):
+def get_cost_from_outfile(fname):
+    cost = 0
+    with open(fname, 'r') as f:
+        data = yaml.load(f)
+    for agent in data['schedule']:
+        last = None
+        for node in data['schedule'][agent]:
+            if last:
+                cost += dist(node, last)
+            last = node
+    return cost / len(data['schedule'])
+
+
+def dist(a, b):
+    return sqrt(
+        pow(a['x'] - b['x'], 2)
+        + pow(a['y'] - b['y'], 2)
+    )
+
+
+def plan_with_n_jobs(n_jobs, N, graph_adjlist_fname):
     random.seed(2034)
     starts = list(range(N))
     goals = list(range(N))
@@ -129,17 +149,17 @@ def plan_with_n_jobs(n_jobs, N, graph_fname):
     random.shuffle(goals)
     starts = starts[:n_jobs]
     goals = goals[:n_jobs]
-    return plan(starts, goals)
+    return plan(starts, goals, graph_adjlist_fname, GRAPH_NP_FNAME)
 
 
-def make_undir_graph_file(graph_fname, graph_undir_fname):
+def make_undir_graph_file(graph_adjlist_fname, graph_undir_fname):
     def update_graph_dict(d, a, b):
         for (start, end) in [(a, b), (b, a)]:
             if start not in d.keys():
                 d[start] = tuple()
             d[start] = d[start] + (end,)
         return d
-    with open(graph_fname, 'r') as grf:
+    with open(graph_adjlist_fname, 'r') as grf:
         grreader = csv.reader(grf, delimiter=' ')
         edges = {}
         for node in grreader:
@@ -186,12 +206,12 @@ if __name__ == '__main__':
         for n_jobs in ns:
             cs = []
             ts = []
-            for graph_fname in [GRAPH_AL_UNDIR_FNAME, GRAPH_AL_FNAME]:
-                cost, t = plan_with_n_jobs(n_jobs, N, graph_fname)
+            for graph_adjlist_fname in [GRAPH_AL_UNDIR_FNAME, GRAPH_AL_FNAME]:
+                cost, t = plan_with_n_jobs(n_jobs, N, graph_adjlist_fname, )
                 cs.append(cost)
                 ts.append(t)
-                logging.info("graph_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
-                      (graph_fname, n_jobs, cost, t))
+                logging.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
+                      (graph_adjlist_fname, n_jobs, cost, t))
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
         write_results(results)
