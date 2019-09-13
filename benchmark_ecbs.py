@@ -113,7 +113,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         logging.error(outstr)
     cost = get_cost_from_outfile(TMP_OUT_FNAME)
     t = time.time() - start_time
-    logging.info("cost: " + str(cost))
+    logging.debug("cost: " + str(cost))
     try:
         os.remove(TMP_OUT_FNAME)
     except OSError:
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                 cs.append(cost)
                 ts.append(t)
                 logging.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
-                      (graph_adjlist_fname, n_jobs, cost, t))
+                             (graph_adjlist_fname, n_jobs, cost, t))
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
         write_results(results)
