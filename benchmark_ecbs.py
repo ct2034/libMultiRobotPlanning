@@ -107,7 +107,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         return MAX_COST, 0
     try:
         os.remove(TMP_JOBS_FNAME)
-    except FileNotFoundError:
+    except OSError:
         pass
     if not os.path.exists(TMP_OUT_FNAME):
         logging.error(outstr)
@@ -116,7 +116,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
     logging.info("cost: " + str(cost))
     try:
         os.remove(TMP_OUT_FNAME)
-    except FileNotFoundError:
+    except OSError:
         pass
     return cost, t
 
