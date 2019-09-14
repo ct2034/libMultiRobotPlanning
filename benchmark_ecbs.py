@@ -90,6 +90,8 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         for j in range(n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
     start_time = time.time()
+    t = 0
+    outstr = ""
     cmd = [
         os.path.dirname(__file__) + "/build/ecbs",
         "-a", graph_adjlist_fname,
@@ -99,20 +101,39 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         "-w", str(SUBOPTIMALITY)]
     logging.debug(" ".join(cmd))
     try:
-        outstr = subprocess.check_output(cmd)
-        logging.debug(outstr)
+        process = subprocess.Popen(
+            cmd,
+            cwd=os.path.dirname(__file__),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        while t < timeout:
+            t = time.time() - start_time
+            if process.poll() is not None:
+                logging.debug("process.returncode " + str(process.returncode))
+                stdoutdata, stderrdata = process.communicate()
+                if stderrdata:
+                    logging.error(stderrdata)
+                outstr = stdoutdata
+                break
+            time.sleep(.1)
     except subprocess.CalledProcessError as e:
         logging.warn("CalledProcessError")
         logging.warn(e.output)
-        return MAX_COST, 0
-    try:
-        os.remove(TMP_JOBS_FNAME)
-    except OSError:
-        pass
+    finally:
+        if process.poll() is None:
+            process.kill()
+        try:
+            os.remove(TMP_JOBS_FNAME)
+        except OSError:
+            pass
     if not os.path.exists(TMP_OUT_FNAME):
         logging.error(outstr)
-    cost = get_cost_from_outfile(TMP_OUT_FNAME)
-    t = time.time() - start_time
+        cost = MAX_COST
+
+    else:
+        cost = get_cost_from_outfile(TMP_OUT_FNAME)
+        t = time.time() - start_time
     logging.debug("cost: " + str(cost))
     try:
         os.remove(TMP_OUT_FNAME)
