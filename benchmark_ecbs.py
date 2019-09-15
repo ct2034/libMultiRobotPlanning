@@ -22,7 +22,9 @@ SUBOPTIMALITY = 1.3
 TIMEOUT_S = 120  # 2min
 MAX_COST = 9999
 
-logging.getLogger().setLevel(logging.DEBUG)
+logging.basicConfig()
+logger = logging.getLogger('benchmark_ecbs')
+logger.setLevel(logging.DEBUG)
 
 
 def max_vertex():
@@ -71,7 +73,7 @@ def create_initial_jobs_file(N, n_jobs):
                     ok = True
                 else:
                     ok = False
-                    logging.warning("{} -> {} does not work".format(a_start, a_goal))
+                    logger.warning("{} -> {} does not work".format(a_start, a_goal))
         starts.append(a_start)
         starts_used.add(a_start)
         goals.append(a_goal)
@@ -82,7 +84,7 @@ def create_initial_jobs_file(N, n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
 
 
-def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S):
+def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S, cwd=os.path.dirname(__file__)):
     n_jobs = len(starts)
     assert len(starts) == len(goals), "mus have as many starts as goals"
     with open(TMP_JOBS_FNAME, "w") as f:
@@ -99,27 +101,28 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         "-j", TMP_JOBS_FNAME,
         "-o", TMP_OUT_FNAME,
         "-w", str(SUBOPTIMALITY)]
-    logging.debug(" ".join(cmd))
+    logger.info(" ".join(cmd))
     try:
         process = subprocess.Popen(
             cmd,
-            cwd=os.path.dirname(__file__),
+            # cwd=os.path.dirname(__file__),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         while t < timeout:
             t = time.time() - start_time
             if process.poll() is not None:
-                logging.debug("process.returncode " + str(process.returncode))
+                logger.info("process.returncode " + str(process.returncode))
                 stdoutdata, stderrdata = process.communicate()
+                logger.info(stdoutdata)
                 if stderrdata:
-                    logging.error(stderrdata)
+                    logger.error(stderrdata)
                 outstr = stdoutdata
                 break
             time.sleep(.1)
     except subprocess.CalledProcessError as e:
-        logging.warn("CalledProcessError")
-        logging.warn(e.output)
+        logger.warn("CalledProcessError")
+        logger.warn(e.output)
     finally:
         if process.poll() is None:
             process.kill()
@@ -128,13 +131,16 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S)
         except OSError:
             pass
     if not os.path.exists(TMP_OUT_FNAME):
-        logging.error(outstr)
+        logger.error(outstr)
         cost = MAX_COST
 
     else:
-        cost = get_cost_from_outfile(TMP_OUT_FNAME)
-        t = time.time() - start_time
-    logging.debug("cost: " + str(cost))
+        try:
+            cost = get_cost_from_outfile(TMP_OUT_FNAME)
+            t = time.time() - start_time
+        except TypeError:
+            logger.error(stdoutdata)
+    logger.debug("cost: " + str(cost))
     try:
         os.remove(TMP_OUT_FNAME)
     except OSError:
@@ -150,7 +156,7 @@ def get_cost_from_outfile(fname):
         last = None
         for node in data['schedule'][agent]:
             if last:
-                cost += dist(node, last)
+                cost += 1  # dist(node, last)
             last = node
     return cost / len(data['schedule'])
 
@@ -231,7 +237,7 @@ if __name__ == '__main__':
                 cost, t = plan_with_n_jobs(n_jobs, N, graph_adjlist_fname, )
                 cs.append(cost)
                 ts.append(t)
-                logging.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
+                logger.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
                              (graph_adjlist_fname, n_jobs, cost, t))
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)

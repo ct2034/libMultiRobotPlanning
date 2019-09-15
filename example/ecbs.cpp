@@ -534,7 +534,7 @@ int main(int argc, char* argv[]) {
     np.emplace_back(Location(std::stoi(row[0]), std::stoi(row[1])));
   }
   BOOST_ASSERT(np.size() == result.size());
-  std::cout << "np.size():" << np.size() << std::endl;
+  std::cout << "np.size() " << np.size() << std::endl;
 
   // adjacency list
   std::ifstream infile;
@@ -563,7 +563,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-  std::cout << "al.size():" << al.size() << std::endl;
+  std::cout << "al.size() " << al.size() << std::endl;
 
   // jobs
   std::ifstream infilej;
@@ -581,8 +581,8 @@ int main(int argc, char* argv[]) {
     goals.emplace_back(std::stoi(row[1]));
   }
   BOOST_ASSERT(goals.size() == startStates.size());
-  std::cout << "startStates.size():" << startStates.size() << std::endl;
-  std::cout << "goals.size():" << goals.size() << std::endl;
+  std::cout << "startStates.size() " << startStates.size() << std::endl;
+  std::cout << "goals.size() " << goals.size() << std::endl;
 
   int meanEdgew =
       (int)(std::accumulate(
