@@ -3,6 +3,7 @@ import csv
 from itertools import dropwhile
 from matplotlib import pyplot as plt
 import os
+import psutil
 import random
 import re
 import logging
@@ -116,7 +117,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
                 stdoutdata, stderrdata = process.communicate()
                 logger.info(stdoutdata)
                 if stderrdata:
-                    logger.error(stderrdata)
+                    logger.error("Err: " + str(stderrdata))
                 outstr = stdoutdata
                 break
             time.sleep(.1)
@@ -145,6 +146,12 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         os.remove(TMP_OUT_FNAME)
     except OSError:
         pass
+    # cleaning up a bit ...
+    for proc in psutil.process_iter():
+    # check whether the process name matches
+        if proc.name() == "ecbs":
+            proc.kill()
+            logger.error("killed it")
     return cost, t
 
 
