@@ -19,7 +19,7 @@ GRAPH_NP_FNAME = "graph_pos.csv"
 TMP_JOBS_FNAME = "tmp_jobs.csv"
 TMP_OUT_FNAME = "/tmp/tmp_out.yaml"
 INIT_JOBS_FNAME = "init_jobs.csv"
-SUBOPTIMALITY = 1.3
+SUBOPTIMALITY = 1.7
 TIMEOUT_S = 120  # 2min
 MAX_COST = 9999
 
