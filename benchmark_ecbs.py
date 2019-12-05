@@ -1,17 +1,18 @@
 #!/usr/bin/env python2
 import csv
-from itertools import dropwhile
-from matplotlib import pyplot as plt
+import logging
 import os
-import psutil
 import random
 import re
-import logging
 import subprocess
 import sys
 import time
-import yaml
+from itertools import dropwhile
 from math import sqrt
+
+import psutil
+import yaml
+from matplotlib import pyplot as plt
 
 GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
