@@ -70,12 +70,14 @@ def create_initial_jobs_file(N, n_jobs):
             if a_start in starts_used or a_goal in goals_used:
                 ok = False
             else:
-                c, t = plan([a_start], [a_goal], GRAPH_AL_FNAME, GRAPH_NP_FNAME, 5)
+                c, t = plan([a_start], [a_goal],
+                            GRAPH_AL_FNAME, GRAPH_NP_FNAME, 5)
                 if c != MAX_COST:
                     ok = True
                 else:
                     ok = False
-                    logger.warning("{} -> {} does not work".format(a_start, a_goal))
+                    logger.warning(
+                        "{} -> {} does not work".format(a_start, a_goal))
         starts.append(a_start)
         starts_used.add(a_start)
         goals.append(a_goal)
@@ -86,7 +88,7 @@ def create_initial_jobs_file(N, n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
 
 
-def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S, cwd=os.path.dirname(__file__)):
+def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S, cwd=os.path.dirname(__file__), remove_outfile=True, suboptimality=SUBOPTIMALITY):
     n_jobs = len(starts)
     assert len(starts) == len(goals), "mus have as many starts as goals"
     with open(TMP_JOBS_FNAME, "w") as f:
@@ -102,7 +104,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         "-p", graph_pos_fname,
         "-j", TMP_JOBS_FNAME,
         "-o", TMP_OUT_FNAME,
-        "-w", str(SUBOPTIMALITY)]
+        "-w", str(suboptimality)]
     logger.info(" ".join(cmd))
     try:
         process = subprocess.Popen(
@@ -143,13 +145,14 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         except TypeError:
             logger.error(stdoutdata)
     logger.debug("cost: " + str(cost))
-    try:
-        os.remove(TMP_OUT_FNAME)
-    except OSError:
-        pass
+    if remove_outfile:
+        try:
+            os.remove(TMP_OUT_FNAME)
+        except OSError:
+            pass
     # cleaning up a bit ...
     for proc in psutil.process_iter():
-    # check whether the process name matches
+        # check whether the process name matches
         if proc.name() == "ecbs":
             proc.kill()
             logger.error("killed it")
@@ -246,7 +249,7 @@ if __name__ == '__main__':
                 cs.append(cost)
                 ts.append(t)
                 logger.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
-                             (graph_adjlist_fname, n_jobs, cost, t))
+                            (graph_adjlist_fname, n_jobs, cost, t))
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
         write_results(results)
