@@ -441,6 +441,10 @@ class Environment {
 
   int lowLevelExpanded() const { return m_lowLevelExpanded; }
 
+  void getConstraints(Constraints* cs) {
+    cs->add(*m_constraints);
+  }
+
  private:
   State getState(size_t agentIdx,
                  const std::vector<PlanResult<State, Action, int>>& solution,
@@ -639,6 +643,27 @@ int main(int argc, char* argv[]) {
             << "      y: " << np[state.first.v].y << std::endl
             << "      t: " << state.second << std::endl;
       }
+    }
+    Constraints cs;
+    mapf.getConstraints(&cs);
+    out << "blocks:" << std::endl;
+    if(!cs.edgeConstraints.empty()){
+      out << "  edgeConstraints:" << std::endl;
+      for(EdgeConstraint ec : cs.edgeConstraints){
+        out << "    - t: " << ec.time << std::endl
+            << "      v1: " << ec.v1 << std::endl
+            << "      v1: " << ec.v2 << std::endl;
+      }
+    }
+    if(!cs.vertexConstraints.empty()){
+      out << "  vertexConstraints:" << std::endl;
+      for(VertexConstraint vc : cs.vertexConstraints){
+        out << "    - t: " << vc.time << std::endl
+            << "      v: " << vc.v << std::endl;
+      }
+    }
+    if(cs.edgeConstraints.empty() & cs.vertexConstraints.empty()){
+      out << "  0" << std::endl;
     }
   } else {
     std::cout << "Planning NOT successful!" << std::endl;
