@@ -39,8 +39,9 @@ def gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_nodepose):
 def read_outfile(fname):
     with open(fname, 'r') as f:
         data = yaml.load(f)
-    print(data)
-    print('highLevelExpanded: %d'%data['statistics']['highLevelExpanded'])
+    # print(data)
+    # print('highLevelExpanded: %d'%data['statistics']['highLevelExpanded'])
+    return data['blocks']
 
 
 def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
@@ -56,7 +57,8 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
     print("cost: %d, time: %f" % (cost, time))
 
     if os.path.exists(TMP_OUT_FNAME):
-        read_outfile(TMP_OUT_FNAME)
+        blocks = read_outfile(TMP_OUT_FNAME)
         os.remove(TMP_OUT_FNAME)
+        return blocks
     else:
         print("No results file")

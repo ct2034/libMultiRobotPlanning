@@ -601,9 +601,10 @@ int main(int argc, char* argv[]) {
   Environment mapf(np, al, edgew, goals, meanEdgew);
   ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
   std::vector<PlanResult<State, Action, int>> solution;
+  std::vector<Constraints> constraints_out;
 
   Timer timer;
-  bool success = cbs.search(startStates, solution);
+  bool success = cbs.search(startStates, solution, constraints_out);
   timer.stop();
 
   if (success) {
@@ -644,26 +645,29 @@ int main(int argc, char* argv[]) {
             << "      t: " << state.second << std::endl;
       }
     }
-    Constraints cs;
-    mapf.getConstraints(&cs);
     out << "blocks:" << std::endl;
-    if(!cs.edgeConstraints.empty()){
-      out << "  edgeConstraints:" << std::endl;
-      for(EdgeConstraint ec : cs.edgeConstraints){
-        out << "    - t: " << ec.time << std::endl
-            << "      v1: " << ec.v1 << std::endl
-            << "      v1: " << ec.v2 << std::endl;
+    for (size_t a = 0; a < solution.size(); ++a) {
+      Constraints cs = constraints_out[a];
+      out << "  agent" << a << ":" << std::endl;
+      if(cs.edgeConstraints.empty() & cs.vertexConstraints.empty()){
+        out << "    " << cs.edgeConstraints.size() + cs.vertexConstraints.size() << std::endl;
+      } else {
+        if(!cs.edgeConstraints.empty()){
+          out << "    edgeConstraints:" << std::endl;
+          for(EdgeConstraint ec : cs.edgeConstraints){
+            out << "      - t: " << ec.time << std::endl
+                << "        v1: " << ec.v1 << std::endl
+                << "        v1: " << ec.v2 << std::endl;
+          }
+        }
+        if(!cs.vertexConstraints.empty()){
+          out << "    vertexConstraints:" << std::endl;
+          for(VertexConstraint vc : cs.vertexConstraints){
+            out << "      - t: " << vc.time << std::endl
+                << "        v: " << vc.v << std::endl;
+          }
+        }
       }
-    }
-    if(!cs.vertexConstraints.empty()){
-      out << "  vertexConstraints:" << std::endl;
-      for(VertexConstraint vc : cs.vertexConstraints){
-        out << "    - t: " << vc.time << std::endl
-            << "      v: " << vc.v << std::endl;
-      }
-    }
-    if(cs.edgeConstraints.empty() & cs.vertexConstraints.empty()){
-      out << "  0" << std::endl;
     }
   } else {
     std::cout << "Planning NOT successful!" << std::endl;

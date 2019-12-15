@@ -107,7 +107,8 @@ class ECBS {
   ECBS(Environment& environment, float w) : m_env(environment), m_w(w) {}
 
   bool search(const std::vector<State>& initialStates,
-              std::vector<PlanResult<State, Action, Cost> >& solution) {
+              std::vector<PlanResult<State, Action, Cost> >& solution,
+              std::vector<Constraints>& constraints_out) {
     HighLevelNode start;
     start.solution.resize(initialStates.size());
     start.constraints.resize(initialStates.size());
@@ -236,6 +237,7 @@ class ECBS {
       if (!m_env.getFirstConflict(P.solution, conflict)) {
         //        std::cout << "done; cost: " << P.cost << std::endl;
         solution = P.solution;
+        constraints_out = P.constraints;
         return true;
       }
 
