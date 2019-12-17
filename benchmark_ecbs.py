@@ -14,6 +14,8 @@ import psutil
 import yaml
 from matplotlib import pyplot as plt
 
+logger = logging.getLogger('benchmark_ecbs')
+
 GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
@@ -23,10 +25,6 @@ INIT_JOBS_FNAME = "init_jobs.csv"
 SUBOPTIMALITY = 1.7
 TIMEOUT_S = 120  # 2min
 MAX_COST = 9999
-
-logging.basicConfig()
-logger = logging.getLogger('benchmark_ecbs')
-logger.setLevel(logging.DEBUG)
 
 
 def max_vertex():
@@ -233,6 +231,9 @@ def read_results():
 
 
 if __name__ == '__main__':
+    logging.basicConfig()
+    logger.setLevel(logging.DEBUG)
+
     if sys.argv[1] == "eval":
         N = max_vertex()
         # ns = [1, 2, 3, 5, 10, 20, 30, 50, 100]

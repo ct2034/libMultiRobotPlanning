@@ -1,5 +1,6 @@
 import csv
 import hashlib
+import logging
 import os
 from itertools import product
 
@@ -7,6 +8,8 @@ import numpy as np
 import yaml
 
 from benchmark_ecbs import TMP_OUT_FNAME, plan
+
+logger = logging.getLogger('plan_ecbs')
 
 
 def gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_nodepose):
@@ -54,11 +57,11 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
     goals_nodes = [n_per_xy[tuple(s)] for s in goals]
     cost, time = plan(starts_nodes, goals_nodes, FNAME_ADJLIST,
                       FNAME_NP, remove_outfile=False, suboptimality=1.5)
-    print("cost: %d, time: %f" % (cost, time))
+    logger.info("cost: %d, time: %f" % (cost, time))
 
     if os.path.exists(TMP_OUT_FNAME):
         blocks = read_outfile(TMP_OUT_FNAME)
         os.remove(TMP_OUT_FNAME)
         return blocks
     else:
-        print("No results file")
+        logger.warn("No results file")
