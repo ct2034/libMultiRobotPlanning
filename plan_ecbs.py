@@ -9,7 +9,9 @@ import yaml
 
 from benchmark_ecbs import TMP_OUT_FNAME, plan
 
-logger = logging.getLogger('plan_ecbs')
+logger = logging.getLogger(__name__)
+
+BLOCKS_STR = 'blocks'
 
 
 def gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_nodepose):
@@ -44,7 +46,7 @@ def read_outfile(fname):
         data = yaml.load(f)
     # print(data)
     # print('highLevelExpanded: %d'%data['statistics']['highLevelExpanded'])
-    return data['blocks']
+    return data
 
 
 def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
@@ -60,8 +62,8 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
     logger.info("cost: %d, time: %f" % (cost, time))
 
     if os.path.exists(TMP_OUT_FNAME):
-        blocks = read_outfile(TMP_OUT_FNAME)
+        data = read_outfile(TMP_OUT_FNAME)
         os.remove(TMP_OUT_FNAME)
-        return blocks
+        return data
     else:
         logger.warn("No results file")

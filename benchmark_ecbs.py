@@ -14,7 +14,7 @@ import psutil
 import yaml
 from matplotlib import pyplot as plt
 
-logger = logging.getLogger('benchmark_ecbs')
+logger = logging.getLogger(__name__)
 
 GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
