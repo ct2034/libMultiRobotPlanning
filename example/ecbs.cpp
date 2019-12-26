@@ -655,19 +655,19 @@ int main(int argc, char* argv[]) {
         if(!cs.edgeConstraints.empty()){
           out << "    edgeConstraints:" << std::endl;
           for(EdgeConstraint ec : cs.edgeConstraints){
-            out << "      - t: " << ec.time << std::endl
-                << "        v1.x: " << np[ec.v1].x << std::endl
+            out << "      - v1.x: " << np[ec.v1].x << std::endl
                 << "        v1.y: " << np[ec.v1].y << std::endl
                 << "        v2.x: " << np[ec.v2].x << std::endl
-                << "        v2.y: " << np[ec.v2].y << std::endl;
+                << "        v2.y: " << np[ec.v2].y << std::endl
+                << "        t: " << ec.time << std::endl;
           }
         }
         if(!cs.vertexConstraints.empty()){
           out << "    vertexConstraints:" << std::endl;
           for(VertexConstraint vc : cs.vertexConstraints){
-            out << "      - t: " << vc.time << std::endl
-                << "        v.x: " << np[vc.v].x << std::endl
-                << "        v.y: " << np[vc.v].y << std::endl;
+            out << "      - v.x: " << np[vc.v].x << std::endl
+                << "        v.y: " << np[vc.v].y << std::endl
+                << "        t: " << vc.time << std::endl;
           }
         }
       }
