@@ -20,23 +20,30 @@ def gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_nodepose):
     n_per_xy = {}
     i = 0
 
-    with open(fname_nodepose, "w") as f_nodepose:
-        nodepose_writer = csv.writer(f_nodepose, delimiter=' ')
+    if not os.path.exists(fname_nodepose):
+        with open(fname_nodepose, "w") as f_nodepose:
+            nodepose_writer = csv.writer(f_nodepose, delimiter=' ')
+            for (x, y) in product(range(width), range(height)):
+                if gridmap[x, y] == 0:
+                    nodepose_writer.writerow([x, y])
+                    n_per_xy[(x, y)] = i
+                    i += 1
+    else:
         for (x, y) in product(range(width), range(height)):
             if gridmap[x, y] == 0:
-                nodepose_writer.writerow([x, y])
                 n_per_xy[(x, y)] = i
                 i += 1
 
-    with open(fname_adjlist, "w") as f_adjlist:
-        adjlist_writer = csv.writer(f_adjlist, delimiter=' ')
-        for (x, y) in product(range(width), range(height)):
-            if (x, y) in sorted(n_per_xy.keys()):
-                targets = []
-                for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    if (x+dx, y+dy) in n_per_xy.keys():
-                        targets.append(n_per_xy[(x+dx, y+dy)])
-                adjlist_writer.writerow([n_per_xy[(x, y)], ] + targets)
+    if not os.path.exists(fname_adjlist):
+        with open(fname_adjlist, "w") as f_adjlist:
+            adjlist_writer = csv.writer(f_adjlist, delimiter=' ')
+            for (x, y) in product(range(width), range(height)):
+                if (x, y) in sorted(n_per_xy.keys()):
+                    targets = []
+                    for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        if (x+dx, y+dy) in n_per_xy.keys():
+                            targets.append(n_per_xy[(x+dx, y+dy)])
+                    adjlist_writer.writerow([n_per_xy[(x, y)], ] + targets)
 
     return n_per_xy
 
