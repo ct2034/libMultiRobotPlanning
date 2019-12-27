@@ -56,7 +56,8 @@ def read_outfile(fname):
     return data
 
 
-def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
+def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list(),
+                    timeout=30):
     gridmap.flags.writeable = False
     md5 = hashlib.md5(gridmap.data).hexdigest()
     FNAME_ADJLIST = "cache/" + str(md5) + ".adjl.csv"
@@ -65,7 +66,8 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list()):
     starts_nodes = [n_per_xy[tuple(s)] for s in starts]
     goals_nodes = [n_per_xy[tuple(s)] for s in goals]
     cost, time = plan(starts_nodes, goals_nodes, FNAME_ADJLIST,
-                      FNAME_NP, remove_outfile=False, suboptimality=1.5)
+                      FNAME_NP, remove_outfile=False,
+                      suboptimality=1.2, timeout=timeout)
     logger.info("cost: %d, time: %f" % (cost, time))
 
     if os.path.exists(TMP_OUT_FNAME):
