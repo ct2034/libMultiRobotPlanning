@@ -76,3 +76,4 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list(),
         return data
     else:
         logger.warn("No results file")
+        return None
