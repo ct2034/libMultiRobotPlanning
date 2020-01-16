@@ -151,9 +151,12 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
     # cleaning up a bit ...
     for proc in psutil.process_iter():
         # check whether the process name matches
-        if proc.name() == "ecbs":
-            proc.kill()
-            logger.error("killed it")
+        try:
+            if proc.name() == "ecbs":
+                proc.kill()
+                logger.error("killed it")
+        except psutil._exceptions.NoSuchProcess:
+            pass
     return cost, t
 
 
