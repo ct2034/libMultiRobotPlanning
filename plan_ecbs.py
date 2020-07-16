@@ -7,7 +7,7 @@ from itertools import product
 import numpy as np
 import yaml
 
-from libMultiRobotPlanning.benchmark_ecbs import TMP_OUT_FNAME, plan
+from .benchmark_ecbs import TMP_OUT_FNAME, plan
 
 logger = logging.getLogger(__name__)
 
