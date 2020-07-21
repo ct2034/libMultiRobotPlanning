@@ -118,7 +118,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
                 stdoutdata, stderrdata = process.communicate()
                 logger.info(stdoutdata)
                 if stderrdata:
-                    logger.error("Err: " + str(stderrdata))
+                    logger.error("stderrdata: " + str(stderrdata))
                 outstr = stdoutdata
                 break
             time.sleep(.1)
@@ -133,15 +133,15 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         except OSError:
             pass
     if not os.path.exists(TMP_OUT_FNAME):
-        logger.error(outstr)
+        logger.warn("not os.path.exists " + str(TMP_OUT_FNAME))
         cost = MAX_COST
 
     else:
         try:
             cost = get_cost_from_outfile(TMP_OUT_FNAME)
             t = time.time() - start_time
-        except TypeError:
-            logger.error(stdoutdata)
+        except TypeError as e:
+            logger.error("TypeError" + str(e))
     logger.debug("cost: " + str(cost))
     if remove_outfile:
         try:
@@ -154,7 +154,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         try:
             if proc.name() == "ecbs":
                 proc.kill()
-                logger.error("killed it")
+                logger.warn("killed it")
         except psutil._exceptions.NoSuchProcess:
             pass
     return cost, t
