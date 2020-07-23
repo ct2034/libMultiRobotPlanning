@@ -9,6 +9,7 @@ import sys
 import time
 from itertools import dropwhile
 from math import sqrt
+from typing import Any, Tuple
 
 import psutil
 import yaml
@@ -244,7 +245,7 @@ if __name__ == '__main__':
         ns = range(10, 190, 10)
         if not os.path.exists(GRAPH_AL_UNDIR_FNAME):
             make_undir_graph_file(GRAPH_AL_FNAME, GRAPH_AL_UNDIR_FNAME)
-        results = (ns,)
+        results: Tuple[Any, ...] = (ns,)
         for n_jobs in ns:
             cs = []
             ts = []

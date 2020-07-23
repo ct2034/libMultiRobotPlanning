@@ -3,6 +3,7 @@ import hashlib
 import logging
 import os
 from itertools import product
+from typing import Any, List
 
 import numpy as np
 import yaml
@@ -56,7 +57,7 @@ def read_outfile(fname):
     return data
 
 
-def plan_in_gridmap(gridmap: np.ndarray, starts: list(), goals: list(),
+def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
                     timeout=30):
     gridmap.flags.writeable = False
     md5 = hashlib.md5(gridmap.data).hexdigest()
