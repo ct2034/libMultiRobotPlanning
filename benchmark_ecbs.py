@@ -20,8 +20,6 @@ logger = logging.getLogger(__name__)
 GRAPH_AL_FNAME = "graph_adjlist.csv"
 GRAPH_AL_UNDIR_FNAME = "graph_adjlist_undir.csv"
 GRAPH_NP_FNAME = "graph_pos.csv"
-TMP_JOBS_FNAME = "tmp_jobs.csv"
-TMP_OUT_FNAME = "/tmp/tmp_out.yaml"
 INIT_JOBS_FNAME = "init_jobs.csv"
 SUBOPTIMALITY = 1.7
 TIMEOUT_S = 120  # 2min
@@ -87,10 +85,14 @@ def create_initial_jobs_file(N, n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
 
 
-def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S, cwd=os.path.dirname(__file__), remove_outfile=True, suboptimality=SUBOPTIMALITY):
+def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
+         timeout=TIMEOUT_S, cwd=os.path.dirname(__file__), remove_outfile=True,
+         suboptimality=SUBOPTIMALITY):
     n_jobs = len(starts)
-    assert len(starts) == len(goals), "mus have as many starts as goals"
-    with open(TMP_JOBS_FNAME, "w") as f:
+    assert len(starts) == len(goals), "must have as many starts as goals"
+    jobs_fname = "/tmp/%d_jobs.yml" % random.randrange(1E8)
+    out_fname = "/tmp/%d_out.yml" % random.randrange(1E8)
+    with open(jobs_fname, "w") as f:
         jobswriter = csv.writer(f, delimiter=' ')
         for j in range(n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
@@ -101,8 +103,8 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         os.path.dirname(__file__) + "/build/ecbs",
         "-a", graph_adjlist_fname,
         "-p", graph_pos_fname,
-        "-j", TMP_JOBS_FNAME,
-        "-o", TMP_OUT_FNAME,
+        "-j", jobs_fname,
+        "-o", out_fname,
         "-w", str(suboptimality)]
     logger.info(" ".join(cmd))
     try:
@@ -130,23 +132,22 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         if process.poll() is None:
             process.kill()
         try:
-            os.remove(TMP_JOBS_FNAME)
+            os.remove(jobs_fname)
         except OSError:
             pass
-    if not os.path.exists(TMP_OUT_FNAME):
-        logger.warning("not os.path.exists " + str(TMP_OUT_FNAME))
+    if not os.path.exists(out_fname):
         cost = MAX_COST
 
     else:
         try:
-            cost = get_cost_from_outfile(TMP_OUT_FNAME)
+            cost = get_cost_from_outfile(out_fname)
             t = time.time() - start_time
         except TypeError as e:
             logger.error("TypeError" + str(e))
     logger.debug("cost: " + str(cost))
     if remove_outfile:
         try:
-            os.remove(TMP_OUT_FNAME)
+            os.remove(out_fname)
         except OSError:
             pass
     # cleaning up a bit ...
@@ -158,7 +159,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
                 logger.warning("killed it")
         except psutil._exceptions.NoSuchProcess:
             pass
-    return cost, t
+    return cost, t, out_fname
 
 
 def get_cost_from_outfile(fname):

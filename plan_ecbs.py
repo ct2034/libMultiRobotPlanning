@@ -7,8 +7,11 @@ from typing import Any, List
 
 import numpy as np
 import yaml
+from cachier import cachier
 
-from .benchmark_ecbs import TMP_OUT_FNAME, plan
+import tools
+
+from .benchmark_ecbs import plan
 
 logger = logging.getLogger(__name__)
 
@@ -57,24 +60,26 @@ def read_outfile(fname):
     return data
 
 
+@cachier(hash_params=tools.hasher)
 def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
                     timeout=30):
-    gridmap.flags.writeable = False
     md5 = hashlib.md5(gridmap.data).hexdigest()
-    FNAME_ADJLIST = "cache/" + str(md5) + ".adjl.csv"
-    FNAME_NP = "cache/" + str(md5) + ".np.csv"
-    n_per_xy = gridmap_to_adjlist_and_poses(gridmap, FNAME_ADJLIST, FNAME_NP)
+    fname_adjlist = "/tmp/" + str(md5) + ".adjl.csv"
+    fname_np = "/tmp/" + str(md5) + ".np.csv"
+    n_per_xy = gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_np)
     starts_nodes = [n_per_xy[tuple(s)] for s in starts]
     goals_nodes = [n_per_xy[tuple(s)] for s in goals]
-    cost, time = plan(starts_nodes, goals_nodes, FNAME_ADJLIST,
-                      FNAME_NP, remove_outfile=False,
-                      suboptimality=1.2, timeout=timeout)
+    cost, time, out_fname = plan(starts_nodes, goals_nodes, fname_adjlist,
+                                 fname_np, remove_outfile=False,
+                                 suboptimality=1.2, timeout=timeout)
     logger.info("cost: %d, time: %f" % (cost, time))
 
-    if os.path.exists(TMP_OUT_FNAME):
-        data = read_outfile(TMP_OUT_FNAME)
-        os.remove(TMP_OUT_FNAME)
+    for fname in [fname_adjlist, fname_np]:
+        if os.path.exists(fname):
+            os.remove(fname)
+    if os.path.exists(out_fname):
+        data = read_outfile(out_fname)
+        os.remove(out_fname)
         return data
     else:
-        logger.warning("No results file")
         return None
