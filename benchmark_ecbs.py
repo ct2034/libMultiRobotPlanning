@@ -124,8 +124,8 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
                 break
             time.sleep(.1)
     except subprocess.CalledProcessError as e:
-        logger.warn("CalledProcessError")
-        logger.warn(e.output)
+        logger.warning("CalledProcessError")
+        logger.warning(e.output)
     finally:
         if process.poll() is None:
             process.kill()
@@ -134,7 +134,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         except OSError:
             pass
     if not os.path.exists(TMP_OUT_FNAME):
-        logger.warn("not os.path.exists " + str(TMP_OUT_FNAME))
+        logger.warning("not os.path.exists " + str(TMP_OUT_FNAME))
         cost = MAX_COST
 
     else:
@@ -155,7 +155,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname, timeout=TIMEOUT_S,
         try:
             if proc.name() == "ecbs":
                 proc.kill()
-                logger.warn("killed it")
+                logger.warning("killed it")
         except psutil._exceptions.NoSuchProcess:
             pass
     return cost, t
