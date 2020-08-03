@@ -76,5 +76,5 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
         os.remove(TMP_OUT_FNAME)
         return data
     else:
-        logger.warn("No results file")
+        logger.warning("No results file")
         return None
