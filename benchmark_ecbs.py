@@ -62,8 +62,8 @@ def create_initial_jobs_file(N, n_jobs):
     for _ in range(n_jobs):
         ok = False
         while not ok:
-            a_start = random.randint(0, N-1)
-            a_goal = random.randint(0, N-1)
+            a_start = random.randrange(N)
+            a_goal = random.randrange(N)
             if a_start in starts_used or a_goal in goals_used:
                 ok = False
             else:
@@ -254,7 +254,8 @@ if __name__ == '__main__':
                 cost, t = plan_with_n_jobs(n_jobs, N, graph_adjlist_fname, )
                 cs.append(cost)
                 ts.append(t)
-                logger.info("graph_adjlist_fname: % 24s | n_jobs: %3d | c: % 8.1f | t: % 6.2fs" %
+                logger.info(("graph_adjlist_fname: % 24s | n_jobs: %3d |" +
+                             " c: % 8.1f | t: % 6.2fs") %
                             (graph_adjlist_fname, n_jobs, cost, t))
             assert len(cs) == 2, "all graphs should have a cost"
             results = results + (cs, ts)
