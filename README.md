@@ -23,10 +23,14 @@ The following algorithms are currently supported:
   * Minimum sum-of-cost (flow-based; integer costs; any number of agents/tasks)
   * Best Next Assignment (series of optimal solutions)
 
+## Requirements
+On Ubuntu 18.04 install:
+```
+sudo apt install cmake libboost-dev libboost-program-options-dev libboost-regex-dev libyaml-cpp-dev 
+```
+
 ## Building
-
-Tested on Ubuntu 16.04.
-
+Tested on Ubuntu 18.04.
 ```
 mkdir build
 cd build
