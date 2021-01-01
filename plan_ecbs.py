@@ -54,7 +54,7 @@ def gridmap_to_adjlist_and_poses(gridmap, fname_adjlist, fname_nodepose):
 
 def read_outfile(fname):
     with open(fname, 'r') as f:
-        data = yaml.load(f)
+        data = yaml.load(f, Loader=yaml.SafeLoader)
     # print(data)
     # print('highLevelExpanded: %d'%data['statistics']['highLevelExpanded'])
     return data

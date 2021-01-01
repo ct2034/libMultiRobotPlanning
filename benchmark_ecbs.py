@@ -165,7 +165,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
 def get_cost_from_outfile(fname):
     cost = 0
     with open(fname, 'r') as f:
-        data = yaml.load(f)
+        data = yaml.load(f, Loader=yaml.SafeLoader)
     for agent in data['schedule']:
         last = None
         for node in data['schedule'][agent]:
