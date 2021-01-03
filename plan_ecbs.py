@@ -63,6 +63,8 @@ def read_outfile(fname):
 @cachier(hash_params=tools.hasher)
 def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
                     timeout=30):
+    # solving memoryview: underlying buffer is not C-contiguous
+    gridmap = np.asarray(gridmap, order='C')
     md5 = hashlib.md5(gridmap.data).hexdigest()
     fname_adjlist = "/tmp/" + str(md5) + ".adjl.csv"
     fname_np = "/tmp/" + str(md5) + ".np.csv"
