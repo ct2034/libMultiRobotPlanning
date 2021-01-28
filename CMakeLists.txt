@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(libMultiRobotPlanning)
 
-find_package(Boost 1.58 REQUIRED COMPONENTS program_options regex)
+find_package(Boost 1.71 REQUIRED COMPONENTS program_options regex)
 find_package(PkgConfig)
 pkg_check_modules(YamlCpp yaml-cpp)
 
