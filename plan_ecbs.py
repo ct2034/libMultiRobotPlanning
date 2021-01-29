@@ -7,7 +7,6 @@ from typing import Any, List
 
 import numpy as np
 import yaml
-from cachier import cachier
 
 import tools
 
@@ -60,7 +59,6 @@ def read_outfile(fname):
     return data
 
 
-@cachier(hash_params=tools.hasher)
 def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
                     timeout=30):
     # solving memoryview: underlying buffer is not C-contiguous
