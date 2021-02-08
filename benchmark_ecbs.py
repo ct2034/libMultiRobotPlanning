@@ -68,7 +68,8 @@ def create_initial_jobs_file(N, n_jobs):
                 ok = False
             else:
                 c, t = plan([a_start], [a_goal],
-                            GRAPH_AL_FNAME, GRAPH_NP_FNAME, 5)
+                            GRAPH_AL_FNAME, GRAPH_NP_FNAME,
+                            timeout=TIMEOUT_S, suboptimality=SUBOPTIMALITY)
                 if c != MAX_COST:
                     ok = True
                 else:
@@ -86,8 +87,7 @@ def create_initial_jobs_file(N, n_jobs):
 
 
 def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
-         timeout, cwd=os.path.dirname(__file__), remove_outfile=True,
-         suboptimality=SUBOPTIMALITY):
+         timeout, suboptimality, cwd=os.path.dirname(__file__), remove_outfile=True):
     n_jobs = len(starts)
     assert len(starts) == len(goals), "must have as many starts as goals"
     jobs_fname = "/tmp/%d_jobs.yml" % random.randrange(1E8)
@@ -190,7 +190,8 @@ def plan_with_n_jobs(n_jobs, N, graph_adjlist_fname):
     random.shuffle(goals)
     starts = starts[:n_jobs]
     goals = goals[:n_jobs]
-    return plan(starts, goals, graph_adjlist_fname, GRAPH_NP_FNAME)
+    return plan(starts, goals, graph_adjlist_fname, GRAPH_NP_FNAME,
+                timeout=TIMEOUT_S, suboptimality=SUBOPTIMALITY)
 
 
 def make_undir_graph_file(graph_adjlist_fname, graph_undir_fname):

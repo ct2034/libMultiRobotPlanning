@@ -59,7 +59,7 @@ def read_outfile(fname):
 
 
 def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
-                    timeout):
+                    suboptimality, timeout):
     # solving memoryview: underlying buffer is not C-contiguous
     gridmap = np.asarray(gridmap, order='C')
     md5 = hashlib.md5(gridmap.data).hexdigest()
@@ -70,7 +70,7 @@ def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
     goals_nodes = [n_per_xy[tuple(s)] for s in goals]
     cost, time, out_fname = plan(starts_nodes, goals_nodes, fname_adjlist,
                                  fname_np, remove_outfile=False,
-                                 suboptimality=1.2, timeout=timeout)
+                                 suboptimality=suboptimality, timeout=timeout)
     logger.info("cost: %d, time: %f" % (cost, time))
 
     for fname in [fname_adjlist, fname_np]:
