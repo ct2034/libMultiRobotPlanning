@@ -86,7 +86,7 @@ def create_initial_jobs_file(N, n_jobs):
 
 
 def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
-         timeout=TIMEOUT_S, cwd=os.path.dirname(__file__), remove_outfile=True,
+         timeout, cwd=os.path.dirname(__file__), remove_outfile=True,
          suboptimality=SUBOPTIMALITY):
     n_jobs = len(starts)
     assert len(starts) == len(goals), "must have as many starts as goals"

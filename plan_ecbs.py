@@ -6,9 +6,8 @@ from itertools import product
 from typing import Any, List
 
 import numpy as np
-import yaml
-
 import tools
+import yaml
 
 from .benchmark_ecbs import plan
 
@@ -60,7 +59,7 @@ def read_outfile(fname):
 
 
 def plan_in_gridmap(gridmap: np.ndarray, starts: List[Any], goals: List[Any],
-                    timeout=30):
+                    timeout):
     # solving memoryview: underlying buffer is not C-contiguous
     gridmap = np.asarray(gridmap, order='C')
     md5 = hashlib.md5(gridmap.data).hexdigest()
