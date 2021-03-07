@@ -157,7 +157,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
             if proc.name() == "ecbs":
                 proc.kill()
                 logger.warning("killed it")
-        except psutil._exceptions.NoSuchProcess:
+        except psutil.NoSuchProcess:
             pass
     return cost, t, out_fname
 
