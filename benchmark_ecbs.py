@@ -97,6 +97,7 @@ def plan(starts, goals, graph_adjlist_fname, graph_pos_fname,
         for j in range(n_jobs):
             jobswriter.writerow([starts[j], goals[j]])
     start_time = time.time()
+    cost = MAX_COST
     t = 0
     outstr = ""
     cmd = [
