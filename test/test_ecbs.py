@@ -5,13 +5,15 @@ import os
 
 class TestECBS(unittest.TestCase):
 
-  def runECBS(self, inputFile, w, createVideo=False):
+  def runECBS(self, inputFile, w, createVideo=False, timeout=None, additionalArgs=[]):
     subprocess.run(
       ["./ecbs",
        "-i", inputFile,
        "-o", "output.yaml",
-       "-w", str(w)],
-       check=True)
+       "-w", str(w),
+       ] + additionalArgs,
+       check=True,
+       timeout=timeout)
     if createVideo:
       subprocess.run(
         ["python3", "../example/visualize.py",
@@ -20,7 +22,7 @@ class TestECBS(unittest.TestCase):
          "--video", os.path.splitext(os.path.basename(inputFile))[0] + "_ecbs.mp4"],
         check=True)
     with open("output.yaml") as output_file:
-      return yaml.load(output_file)
+      return yaml.safe_load(output_file)
 
   def test_mapfSimple1(self):
     r = self.runECBS("../test/mapf_simple1.yaml", 1.0)
@@ -34,6 +36,14 @@ class TestECBS(unittest.TestCase):
     r = self.runECBS("../test/mapf_atGoal.yaml", 1.0)
     self.assertTrue(r["statistics"]["cost"] == 0)
 
+  def test_someAtGoal(self):
+    # This case is impossible, since two agents have the same goal location
+    # Our implementation doesn't check that; hence a timeout is expected.
+    self.assertRaises(subprocess.TimeoutExpired, self.runECBS, "../test/mapf_someAtGoal.yaml", 1.0, timeout=0.5)
+
+  def test_someAtGoal_disappearingAgents(self):
+    r = self.runECBS("../test/mapf_someAtGoal.yaml", 1.0, additionalArgs=["--disappear-at-goal"])
+    self.assertTrue(r["statistics"]["cost"] == 1)
 
 if __name__ == '__main__':
     unittest.main()

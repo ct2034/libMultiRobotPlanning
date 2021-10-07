@@ -161,18 +161,18 @@ struct Constraints {
                            other.edgeConstraints.end());
   }
 
-  bool overlap(const Constraints& other) {
-    std::vector<VertexConstraint> vertexIntersection;
-    std::vector<EdgeConstraint> edgeIntersection;
-    std::set_intersection(vertexConstraints.begin(), vertexConstraints.end(),
-                          other.vertexConstraints.begin(),
-                          other.vertexConstraints.end(),
-                          std::back_inserter(vertexIntersection));
-    std::set_intersection(edgeConstraints.begin(), edgeConstraints.end(),
-                          other.edgeConstraints.begin(),
-                          other.edgeConstraints.end(),
-                          std::back_inserter(edgeIntersection));
-    return !vertexIntersection.empty() || !edgeIntersection.empty();
+  bool overlap(const Constraints& other) const {
+    for (const auto& vc : vertexConstraints) {
+      if (other.vertexConstraints.count(vc) > 0) {
+        return true;
+      }
+    }
+    for (const auto& ec : edgeConstraints) {
+      if (other.edgeConstraints.count(ec) > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Constraints& c) {
@@ -219,26 +219,25 @@ struct hash<Location> {
 ///
 class Environment {
  public:
-  Environment(const std::vector<Location>& nodePositions,
-              const std::vector<std::vector<int>>& adjacecyList,
-              std::map<std::pair<int, int>, double>& edgew,
-              std::vector<int> goals, int meanEdgew)
-      : m_nodePositions(nodePositions),
-        m_adjacecyList(adjacecyList),
-        m_edgew(edgew),
+  Environment(size_t dimx, size_t dimy, std::unordered_set<Location> obstacles,
+              std::vector<Location> goals, bool disappearAtGoal = false)
+      : m_dimx(dimx),
+        m_dimy(dimy),
+        m_obstacles(std::move(obstacles)),
         m_goals(std::move(goals)),
         m_meanEdgew(meanEdgew),
         m_agentIdx(0),
         m_constraints(nullptr),
         m_lastGoalConstraint(-1),
         m_highLevelExpanded(0),
-        m_lowLevelExpanded(0) {}
+        m_lowLevelExpanded(0),
+        m_disappearAtGoal(disappearAtGoal) {}
 
   Environment(const Environment&) = delete;
   Environment& operator=(const Environment&) = delete;
 
   void setLowLevelContext(size_t agentIdx, const Constraints* constraints) {
-    assert(constraints);
+    assert(constraints);  // NOLINT
     m_agentIdx = agentIdx;
     m_constraints = constraints;
     m_lastGoalConstraint = -1;
@@ -368,7 +367,7 @@ class Environment {
       max_t = std::max<int>(max_t, sol.states.size() - 1);
     }
 
-    for (int t = 0; t < max_t; ++t) {
+    for (int t = 0; t <= max_t; ++t) {
       // check drive-drive vertex collisions
       for (size_t i = 0; i < solution.size(); ++i) {
         State state1 = getState(i, solution, t);
@@ -441,9 +440,7 @@ class Environment {
 
   int lowLevelExpanded() const { return m_lowLevelExpanded; }
 
-  void getConstraints(Constraints* cs) {
-    cs->add(*m_constraints);
-  }
+  void getConstraints(Constraints* cs) { cs->add(*m_constraints); }
 
  private:
   State getState(size_t agentIdx,
@@ -454,6 +451,12 @@ class Environment {
       return solution[agentIdx].states[t].first;
     }
     assert(!solution[agentIdx].states.empty());
+    if (m_disappearAtGoal) {
+      // This is a trick to avoid changing the rest of the code significantly
+      // After an agent disappeared, put it at a unique but invalid position
+      // This will cause all calls to equalExceptTime(.) to return false.
+      return State(-1 * agentIdx, -1, -1);
+    }
     return solution[agentIdx].states.back().first;
   }
 
@@ -480,6 +483,7 @@ class Environment {
   int m_lastGoalConstraint;
   int m_highLevelExpanded;
   int m_lowLevelExpanded;
+  bool m_disappearAtGoal;
 };
 
 int main(int argc, char* argv[]) {
@@ -492,6 +496,7 @@ int main(int argc, char* argv[]) {
   std::string positionsfile;
   std::string jobsfile;
   std::string outputFile;
+  bool disappearAtGoal;
   float w;
   bool verbose{false};
   desc.add_options()("help", "produce help message")(
@@ -504,7 +509,8 @@ int main(int argc, char* argv[]) {
       "output,o", po::value<std::string>(&outputFile)->required(),
       "output file (YAML)")(
       "suboptimality,w", po::value<float>(&w)->default_value(1.0),
-      "suboptimality bound")("verbose,v", "print more info");
+      "suboptimality bound")(
+      "disappear-at-goal", po::bool_switch(&disappearAtGoal), "make agents to disappear at goal rather than staying there");
 
   try {
     po::variables_map vm;
@@ -577,34 +583,12 @@ int main(int argc, char* argv[]) {
   bufferj[infilej.tellg()] = '\0';
   result = parse(bufferj, strlen(bufferj));
 
-  std::vector<int> goals;
-  std::vector<State> startStates;
-  for (size_t r = 0; r < result.size(); r++) {
-    Row& row = result[r];
-    startStates.emplace_back(State(0, std::stoi(row[0])));
-    goals.emplace_back(std::stoi(row[1]));
-  }
-  BOOST_ASSERT(goals.size() == startStates.size());
-  std::cout << "startStates.size() " << startStates.size() << std::endl;
-  std::cout << "goals.size() " << goals.size() << std::endl;
-
-  int meanEdgew =
-      (int)(std::accumulate(
-                edgew.begin(), edgew.end(), 0,
-                [](double x,
-                   std::map<std::pair<int, int>, double>::value_type& v) {
-                  return x + v.second;
-                }) /
-            edgew.size());
-
-  std::cout << "w: " << w << std::endl;
-  Environment mapf(np, al, edgew, goals, meanEdgew);
-  ECBS<State, Action, int, Conflict, Constraints, Environment> cbs(mapf, w);
+  Environment mapf(dimx, dimy, obstacles, goals, disappearAtGoal);
+  ECBS<State, Action, int, Conflict, Constraints, Environment> ecbs(mapf, w);
   std::vector<PlanResult<State, Action, int>> solution;
-  std::vector<Constraints> constraints_out;
 
   Timer timer;
-  bool success = cbs.search(startStates, solution, constraints_out);
+  bool success = ecbs.search(startStates, solution);
   timer.stop();
 
   if (success) {
@@ -649,12 +633,13 @@ int main(int argc, char* argv[]) {
     for (size_t a = 0; a < solution.size(); ++a) {
       Constraints cs = constraints_out[a];
       out << "  agent" << a << ":" << std::endl;
-      if(cs.edgeConstraints.empty() & cs.vertexConstraints.empty()){
-        out << "    " << cs.edgeConstraints.size() + cs.vertexConstraints.size() << std::endl;
+      if (cs.edgeConstraints.empty() & cs.vertexConstraints.empty()) {
+        out << "    " << cs.edgeConstraints.size() + cs.vertexConstraints.size()
+            << std::endl;
       } else {
-        if(!cs.edgeConstraints.empty()){
+        if (!cs.edgeConstraints.empty()) {
           out << "    edgeConstraints:" << std::endl;
-          for(EdgeConstraint ec : cs.edgeConstraints){
+          for (EdgeConstraint ec : cs.edgeConstraints) {
             out << "      - v1.x: " << np[ec.v1].x << std::endl
                 << "        v1.y: " << np[ec.v1].y << std::endl
                 << "        v2.x: " << np[ec.v2].x << std::endl
@@ -662,9 +647,9 @@ int main(int argc, char* argv[]) {
                 << "        t: " << ec.time << std::endl;
           }
         }
-        if(!cs.vertexConstraints.empty()){
+        if (!cs.vertexConstraints.empty()) {
           out << "    vertexConstraints:" << std::endl;
-          for(VertexConstraint vc : cs.vertexConstraints){
+          for (VertexConstraint vc : cs.vertexConstraints) {
             out << "      - v.x: " << np[vc.v].x << std::endl
                 << "        v.y: " << np[vc.v].y << std::endl
                 << "        t: " << vc.time << std::endl;

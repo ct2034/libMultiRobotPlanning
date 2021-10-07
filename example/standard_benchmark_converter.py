@@ -28,7 +28,7 @@ def convert_nums(l):
     return l
 
 
-def load_map_file(map_file, occupied_char='@', valid_chars={'@', '.', 'T'}):
+def load_map_file(map_file, occupied_char={'@', 'T', 'O'}, valid_chars={'@', '.', 'T', 'G', 'O', 'S', 'W'}):
     if not os.path.isfile(map_file):
         print("Map file not found!")
         exit(-1)
@@ -43,7 +43,7 @@ def load_map_file(map_file, occupied_char='@', valid_chars={'@', '.', 'T'}):
         assert(len(l) == width)
         for x, c in enumerate(l):
             assert(c in valid_chars)
-            if c == occupied_char:
+            if c in occupied_char:
                 occupancy_lst.add((x, y))
     return width, height, occupancy_lst
 
