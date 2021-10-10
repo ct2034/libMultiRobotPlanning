@@ -107,8 +107,7 @@ class ECBS {
   ECBS(Environment& environment, float w) : m_env(environment), m_w(w) {}
 
   bool search(const std::vector<State>& initialStates,
-              std::vector<PlanResult<State, Action, Cost> >& solution,
-              std::vector<Constraints>& constraints_out) {
+              std::vector<PlanResult<State, Action, Cost> >& solution) {
     HighLevelNode start;
     start.solution.resize(initialStates.size());
     start.constraints.resize(initialStates.size());
@@ -235,14 +234,13 @@ class ECBS {
 
       Conflict conflict;
       if (!m_env.getFirstConflict(P.solution, conflict)) {
-        //        std::cout << "done; cost: " << P.cost << std::endl;
+        std::cout << "done; cost: " << P.cost << std::endl;
         solution = P.solution;
-        constraints_out = P.constraints;
         return true;
       }
 
       // create additional nodes to resolve conflict
-      //      std::cout << "Found conflict: " << conflict << std::endl;
+      std::cout << "Found conflict: " << conflict << std::endl;
       // std::cout << "Found conflict at t=" << conflict.time << " type: " <<
       // conflict.type << std::endl;
 
@@ -251,7 +249,7 @@ class ECBS {
       for (const auto& c : constraints) {
         // std::cout << "Add HL node for " << c.first << std::endl;
         size_t i = c.first;
-        //        std::cout << "create child with id " << id << std::endl;
+        std::cout << "create child with id " << id << std::endl;
         HighLevelNode newNode = P;
         newNode.id = id;
         // (optional) check that this constraint was not included already
@@ -274,8 +272,7 @@ class ECBS {
         newNode.focalHeuristic = m_env.focalHeuristic(newNode.solution);
 
         if (success) {
-          //          std::cout << "  success. cost: " << newNode.cost <<
-          //          std::endl;
+          std::cout << "  success. cost: " << newNode.cost << std::endl;
           auto handle = open.push(newNode);
           (*handle).handle = handle;
           if (newNode.cost <= bestCost * m_w) {
