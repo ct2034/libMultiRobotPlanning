@@ -1,4 +1,0 @@
-psutil
-pyyaml
-matplotlib
-numpy
