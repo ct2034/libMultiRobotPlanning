@@ -54,6 +54,16 @@ def add_self_edges(roadmap):
     return roadmap
 
 
+def check_edges(E, p0, p1, q0, q1):
+    # check if the edges p0-p1 and q0-q1 collide
+    if collision.precheck_bounding_box(E, p0, p1, q0, q1):
+        collides = collision.ellipsoid_collision_motion(
+            E, p0, p1, q0, q1)
+    else:
+        collides = False
+    return collides
+
+
 def compute_edge_conflicts(radius, map):
     # compute the pairwise collisions and add them to the map
     E = np.diag([radius, radius])
@@ -67,11 +77,7 @@ def compute_edge_conflicts(radius, map):
         for j in range(i+1, num_edges):
             q0 = np.asarray(v_dict[edges[j][0]])
             q1 = np.asarray(v_dict[edges[j][1]])
-            if collision.precheck_bounding_box(E, p0, p1, q0, q1):
-                collides = collision.ellipsoid_collision_motion(
-                    E, p0, p1, q0, q1)
-            else:
-                collides = False
+            collides = check_edges(E, p0, p1, q0, q1)
             if collides:
                 conflicts[i].append(j)
                 conflicts[j].append(i)
