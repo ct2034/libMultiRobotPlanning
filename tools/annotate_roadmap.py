@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+from multiprocessing import Pool
+from typing import List, Tuple
 
 import numpy as np
 import yaml
+
+N_PROCESSES = 8
 
 if __name__ != "__main__":
     from . import collision
@@ -54,14 +58,10 @@ def add_self_edges(roadmap):
     return roadmap
 
 
-def check_edges(E, p0, p1, q0, q1):
-    # check if the edges p0-p1 and q0-q1 collide
-    if collision.precheck_bounding_box(E, p0, p1, q0, q1):
-        collides = collision.ellipsoid_collision_motion(
-            E, p0, p1, q0, q1)
-    else:
-        collides = False
-    return collides
+def check_proxy(args):
+    """Prox method to call the collision checker with the right arguments."""
+    _, _, E, p0, p1, q0, q1 = args
+    return collision.ellipsoid_collision_motion(E, p0, p1, q0, q1)
 
 
 def compute_edge_conflicts(radius, map):
@@ -71,6 +71,10 @@ def compute_edge_conflicts(radius, map):
     v_dict = map["roadmap"]["vertices"]
     edges = map["roadmap"]["edges"]
     conflicts = [[] for _ in range(num_edges)]
+    edges_to_check: List[Tuple[
+        int, int, np.ndarray,  # i, j, E
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray  # p0, p1, q0, q1
+    ]] = []
     for i in range(0, num_edges):
         p0 = np.asarray(v_dict[edges[i][0]])
         p1 = np.asarray(v_dict[edges[i][1]])
