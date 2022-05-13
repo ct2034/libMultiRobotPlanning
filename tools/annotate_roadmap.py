@@ -64,12 +64,12 @@ def check_proxy(args):
     return collision.ellipsoid_collision_motion(E, p0, p1, q0, q1)
 
 
-def compute_edge_conflicts(radius, map):
+def compute_edge_conflicts(radius, roadmap):
     # compute the pairwise collisions and add them to the map
     E = np.diag([radius, radius])
-    num_edges = len(map["roadmap"]["edges"])
-    v_dict = map["roadmap"]["vertices"]
-    edges = map["roadmap"]["edges"]
+    num_edges = len(roadmap["roadmap"]["edges"])
+    v_dict = roadmap["roadmap"]["vertices"]
+    edges = roadmap["roadmap"]["edges"]
     conflicts = [[] for _ in range(num_edges)]
     edges_to_check: List[Tuple[
         int, int, np.ndarray,  # i, j, E
@@ -90,8 +90,8 @@ def compute_edge_conflicts(radius, map):
                     edges_to_check.append((i, j, E, p0, p1, q0, q1))
 
     # check all edges in parallel
-    with Pool(N_PROCESSES) as p:
-        results = p.map(check_proxy, edges_to_check)
+    # with Pool(N_PROCESSES) as p:
+    results = map(check_proxy, edges_to_check)
     for result, (i, j, _, _, _, _, _) in zip(results, edges_to_check):
         if result:
             conflicts[i].append(j)
