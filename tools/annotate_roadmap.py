@@ -90,7 +90,6 @@ def compute_edge_conflicts(radius, map):
                     edges_to_check.append((i, j, E, p0, p1, q0, q1))
 
     # check all edges in parallel
-
     with Pool(N_PROCESSES) as p:
         results = p.map(check_proxy, edges_to_check)
     for result, (i, j, _, _, _, _, _) in zip(results, edges_to_check):
